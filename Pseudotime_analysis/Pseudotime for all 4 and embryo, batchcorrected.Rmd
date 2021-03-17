@@ -1,0 +1,349 @@
+---
+title: "pseudotime analysis"
+output: trajectories
+---
+
+
+Constructing single-cell trajectories
+Arder cells in pseudotime along a trajectory - 150 dimensions
+
+
+```{r}
+library(monocle3)
+library(ggplot2)
+library(dplyr)
+
+my.counts = combined.all@assays$RNA@counts
+my.counts= as.matrix(my.counts)
+
+cell_meta = data.frame("Cell" = colnames(my.counts))
+rownames(cell_meta) = colnames(my.counts)
+
+gene_meta = data.frame("gene_short_name" = rownames(my.counts))
+rownames(gene_meta) = rownames(my.counts)
+
+A = new_cell_data_set(my.counts, cell_metadata = cell_meta, gene_metadata = gene_meta)
+
+```
+
+
+```{r}
+
+
+colData(A)$GENOTYPE <- as.character(colnames(A))
+colData(A)$AGE <- as.character(colnames(A))
+colData(A)$MODEL <- as.character(colnames(A))
+colData(A)$CELL_ID <- as.character(colnames(A))
+colData(A)$BATCH <- as.character(colnames(A))
+
+
+A$CELL_ID[a]<-"Glia"
+A$CELL_ID[b]<-"Progenitors"
+A$CELL_ID[c]<-"Nb in vitro"
+A$CELL_ID[d]<-"mature DN"
+A$CELL_ID[e]<-"young Neurons"
+A$CELL_ID[f]<-"Pericytes"
+A$CELL_ID[g]<-"Endothelial cells"
+A$CELL_ID[h]<-"Non DN Neurons"
+
+            
+colData(A)
+
+WT70<-grep('WT_70', colnames(A))
+MUT70<-grep('MUT_70', colnames(A))
+WT35<-grep('WT_35', colnames(A))
+MUT35<-grep('MUT_35', colnames(A))
+EMBR<-grep('Embryo', colnames(A))
+
+
+A$AGE[1360:1646] <- "week6"
+A$AGE[1:131]<- "week7"
+A$AGE[1647:1977]<- "week8"
+A$AGE[132:453]<- "week9"
+A$AGE[454:962] <-"week10"
+A$AGE[963:1359] <- "week11"
+A$AGE[10438:12443] <- "WT70"
+A$AGE[7777:10437] <- "MUT70"
+A$AGE[4925:7776] <- "WT35"
+A$AGE[1978:4924] <- "MUT35"
+
+A$GENOTYPE[10438:12443] <- "WT"
+A$GENOTYPE[7777:10437] <- "MUT"
+A$GENOTYPE[4925:7776] <- "WT"
+A$GENOTYPE[1978:4924] <- "MUT"
+
+
+A$MODEL[1:1977] <- "EMBR"
+A$MODEL[10438:12443] <- "WT70"
+A$MODEL[7777:10437] <- "MUT70"
+A$MODEL[4925:7776] <- "WT35"
+A$MODEL[1978:4924] <- "MUT35"
+
+
+
+A$BATCH[1:1977] <- "Embryo"
+A$BATCH[1978:12443] <- "ORG"
+
+
+
+```
+
+
+
+preprocessing
+```{r}
+A <- preprocess_cds(A, num_dim = 150)
+plot_pc_variance_explained(A)
+
+```
+
+
+Reduce dimensionality and visualize the results
+```{r}
+
+A <- reduce_dimension(A)
+plot_cells(A, label_groups_by_cluster=FALSE)
+
+```
+
+
+Remove batch effects OPTIONAL - not done here no batches
+```{r}
+## Step 2: Remove batch effects with cell alignment
+##You should add a column to the colData that encodes which batch each cell is from
+
+plot_cells(A, color_cells_by="MODEL", label_cell_groups=FALSE)
+
+A <- align_cds(A, alignment_group = "BATCH")
+A = reduce_dimension(A)
+plot_cells(A, color_cells_by="MODEL", label_cell_groups=FALSE)
+
+```
+
+
+
+
+
+cluster cells
+```{r}
+A <- cluster_cells(A)
+plot_cells(A, color_cells_by = "cluster")
+```
+
+Find marker expression for each cluster
+```{r}
+
+#Find To markers, add group_cells_by="partition"
+
+marker_test_res1 <- top_markers(A, 
+                               reference_cells=1000, cores=8)
+
+write.csv(marker_test_res1, file = "TopMarkersNEWMonocleA150.csv")
+
+top_specific_markers100 <- marker_test_res1 %>%
+                            filter(fraction_expressing >= 0.10) %>%
+                            group_by(cell_group) %>%
+                            top_n(5, pseudo_R2)
+
+top_specific_marker_ids100 <- unique(top_specific_markers100 %>% pull(gene_id))
+
+
+plot_genes_by_group(A,
+                    top_specific_marker_ids100,
+                    #group_cells_by="partition",
+                    ordering_type="maximal_on_diag",
+                    max.size=3)
+
+
+colData(A)$assigned_cell_type <- as.character(clusters(A))
+
+colData(A)
+
+colData(A)$assigned_cell_type = dplyr::recode(colData(A)$assigned_cell_type,
+                                                "1"="a",
+                                                "2"="b",
+                                                "3"="c",
+                                                "4"="d",
+                                                "5"="e",
+                                                "6"="f",
+                                                "7"="g" )
+
+plot_cells(A, color_cells_by="assigned_cell_type")
+
+
+```
+
+-----------------------------------------------------
+
+
+learn the trajectory graph
+```{r}
+## Step 5: Learn a graph
+A <- learn_graph(A)
+
+plot_cells(A,
+           color_cells_by = "CELL_ID",
+           label_groups_by_cluster=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE)
+
+q1=plot_cells(A, color_cells_by="CELL_ID", label_cell_groups=FALSE)
+
+
+```
+
+Arder the cells in pseudotime
+```{r}
+## Step 6: Arder cells
+
+
+
+q2=plot_cells(A,
+           color_cells_by = "AGE",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+
+plot_cells(A,
+           color_cells_by = "MODEL",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+
+```
+
+```{r}
+pdf("PTE.pdf", width =10)
+
+print(q1)
+print(q2)
+
+
+dev.off()
+```
+
+```{r}
+A <- order_cells(A)
+plot_cells(A,
+           color_cells_by = "pseudotime",
+           label_cell_groups=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE,
+           graph_label_size=1.5)
+
+
+```
+
+```{r}
+TH=c("TH")
+B_TH <- A[rowData(A)$gene_short_name %in% TH]
+plot_genes_in_pseudotime(B_TH, color_cells_by  = "MODEL")
+
+TH=c( "TH")
+B_DCX <- A[rowData(A)$gene_short_name %in% TH]
+plot_genes_in_pseudotime(B_DCX, color_cells_by  = "CELL_ID")
+
+
+SYT=c( "SLC17A6")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+plot_genes_in_pseudotime(B_SYT, color_cells_by  = "AGEGENOTYPE")
+
+SYT=c( "EN1")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+plot_genes_in_pseudotime(B_SYT, color_cells_by  = "AGEGENOTYPE")
+
+SYT=c( "FOXA2")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+plot_genes_in_pseudotime(B_SYT, color_cells_by  = "AGEGENOTYPE")
+
+
+SYT=c( "SOX2")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+plot_genes_in_pseudotime(B_SYT, color_cells_by  = "AGEGENOTYPE")
+
+
+SYT=c( "NES")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+plot_genes_in_pseudotime(B_SYT, color_cells_by  = "AGEGENOTYPE")
+
+SYT=c("")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+plot_genes_in_pseudotime(B_SYT, color_cells_by  = "AGEGENOTYPE")
+
+
+#plot_to_gtable()
+#plot_genes_violin(A_TH, group_cells_by = "AGEGENOTYPE")
+
+plot_genes_by_group(A)
+
+
+
+#DEG
+```
+
+create cell subset
+```{r}
+#choose neuroepithelium cluster as heterogenous to further analyse
+cds_subset <- choose_cells(A)
+```
+
+
+```{r}
+plot_cells(cds_subset,
+           color_cells_by = "CELL_ID",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+plot_cells(cds_subset,
+           color_cells_by = "MODEL",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+
+plot_cells(cds_subset,
+           color_cells_by = "AGE",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+```
+
+
+
+```{r}
+gene_fits <- fit_models(A, model_formula_str = "~AGEGENOTYPE")
+
+
+fit_coefs <- coefficient_table(gene_fits)
+```
+
+
+```{r}
+#EG Do deg
+
+pr_graph_test_res <- graph_test(cds_subset, neighbor_graph="knn", cores=8)
+pr_deg_ids <- row.names(subset(pr_graph_test_res, morans_I > 0.01 & q_value < 0.05))
+write.csv(pr_deg_ids, file = "DEGsubset.csv")
+
+
+#Or do modules
+gene_module_df <- find_gene_modules(cds_subset[pr_deg_ids,], resolution=1e-3)
+
+plot_cells(cds_subset, genes=gene_module_df, 
+           show_trajectory_graph=FALSE, 
+           label_cell_groups=FALSE)
+
+write.csv(gene_module_df, file = "Modulessubset.csv")
+```
+
+
+

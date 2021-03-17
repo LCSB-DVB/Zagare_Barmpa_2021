@@ -1,0 +1,979 @@
+---
+title: "Data loading, merging and annotation
+"
+output: html_document
+---
+
+```{r}
+library(Seurat)
+library(cowplot)
+library(patchwork)
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+```
+
+
+##Data load
+```{r}
+##Loading of the embryo midbrain data. Create the seurat object
+
+EMC_ct <- read.table("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Embryo\\EMC_celltype_nodupl.csv", sep = ",", header =T, row.names = 1)
+
+EMC_ct_mx <- as(as.matrix(EMC_ct), "dgCMatrix")
+
+objEMC_ct <- CreateSeuratObject(counts = EMC_ct_mx, project = "embryo_cells", min.cells = 3, min.features = 200)
+objEMC_ct
+
+VlnPlot(objEMC_ct, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+FeatureScatter(objEMC_ct, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+
+##data quality good
+```
+
+
+```{r}
+#########################################################################################################
+
+##Load the LRRK2 Organoids and create the seurat object
+#####################################################  WT  ##############################################
+
+orgWT35 <- read.table("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Organoids\\org3wt35_S1_DGE.txt", sep = "\t", header =T, row.names = 1)
+orgWT35 <- as(as.matrix(orgWT35), "dgCMatrix")
+
+orgWT35 <- CreateSeuratObject(counts = orgWT35, project = "orgdata", min.cells = 3, min.features = 200)
+orgWT35
+
+##QC for the WT organoids and removal of mitochondrial genes
+
+orgWT35[["percent.mt"]] <- PercentageFeatureSet(orgWT35, pattern = "^MT-")
+head(orgWT35@meta.data, 5)
+
+c=VlnPlot(orgWT35, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_WT <- FeatureScatter(orgWT35, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_WT <- FeatureScatter(orgWT35, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+d=plot1_WT + plot2_WT
+
+orgWT35QC <- subset(orgWT35, subset = nFeature_RNA > 100 & nFeature_RNA < 2500 & percent.mt < 30)
+
+e=VlnPlot(orgWT35QC, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_WT_QC <- FeatureScatter(orgWT35QC, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_WT_QC <- FeatureScatter(orgWT35QC, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+f=plot1_WT_QC + plot2_WT_QC
+
+mt <- grep("^MT-", rownames(orgWT35QC))
+orgWT35QC2 <- orgWT35QC[-c(9249:9281), ]
+mt <- grep("^MT-", rownames(orgWT35QC2))
+print(rownames(orgWT35QC2[9249:9281]))
+orgWT35QC2$percent.mt <- NULL
+
+VlnPlot(orgWT35QC2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+
+```{r}
+#########################################################################################################
+orgWT70 <- read.table("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Organoids\\org1wt70II_S1_DGE.txt", sep = "\t", header =T, row.names = 1)
+orgWT70 <- as(as.matrix(orgWT70), "dgCMatrix")
+
+orgWT70 <- CreateSeuratObject(counts = orgWT70, project = "orgdata", min.cells = 3, min.features = 200)
+orgWT70
+
+##QC for the WT organoids and removal of mitochondrial genes
+
+orgWT70[["percent.mt"]] <- PercentageFeatureSet(orgWT70, pattern = "^MT-")
+head(orgWT70@meta.data, 5)
+
+h=VlnPlot(orgWT70, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_WT <- FeatureScatter(orgWT35, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_WT <- FeatureScatter(orgWT35, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+i=plot1_WT + plot2_WT
+
+orgWT70QC <- subset(orgWT70, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 30)
+
+j=VlnPlot(orgWT70QC, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_WT_QC <- FeatureScatter(orgWT35QC, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_WT_QC <- FeatureScatter(orgWT35QC, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+k=plot1_WT_QC + plot2_WT_QC
+
+mt <- grep("^MT-", rownames(orgWT70QC))
+orgWT70QC2 <- orgWT70QC[-c(9897:9928), ]
+mt <- grep("^MT-", rownames(orgWT70QC2))
+print(rownames(orgWT70QC2[9897:9928]))
+orgWT70QC2$percent.mt <- NULL
+
+VlnPlot(orgWT70QC2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+
+```{r}
+################################################## MUT ##################################################
+
+org35Mut <- read.table("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Organoids\\org4Mu35_S2_DGE.txt", sep = "\t", header =T, row.names = 1)
+org35Mut <- as(as.matrix(org35Mut), "dgCMatrix")
+
+org35Mut <- CreateSeuratObject(counts = org35Mut, project = "orgdata", min.cells = 3, min.features = 200)
+org35Mut
+
+##QC of LRRK2 organoids and removal of mitochondrial genes
+
+org35Mut[["percent.mt"]] <- PercentageFeatureSet(org35Mut, pattern = "^MT-")
+
+l=VlnPlot(org35Mut, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_MUT <- FeatureScatter(org35Mut, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_MUT <- FeatureScatter(org35Mut, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+m=plot1_MUT + plot2_MUT
+
+
+org35MutQC <- subset(org35Mut, subset = nFeature_RNA > 100 & nFeature_RNA < 2500 & percent.mt < 30)
+
+n=VlnPlot(org35MutQC, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_MUT_QC <- FeatureScatter(org35MutQC, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_MUT_QC <- FeatureScatter(org35MutQC, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+o=plot1_MUT_QC + plot2_MUT_QC
+
+mt <- grep("^MT-", rownames(org35MutQC))
+mt
+org35MutQC2 <- org35MutQC[-c(9359:9389), ]
+mt <- grep("^MT-", rownames(org35MutQC2))
+org35MutQC2$percent.mt <- NULL
+
+VlnPlot(org35MutQC2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+```{r}
+################################################## MUT ##################################################
+
+org70Mut <- read.table("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Organoids\\org2Mu70_S1_DGE.txt", sep = "\t", header =T, row.names = 1)
+org70Mut <- as(as.matrix(org70Mut), "dgCMatrix")
+
+org70Mut <- CreateSeuratObject(counts = org70Mut, project = "orgdata", min.cells = 3, min.features = 200)
+org70Mut
+
+##QC of LRRK2 organoids and removal of mitochondrial genes
+
+org70Mut[["percent.mt"]] <- PercentageFeatureSet(org70Mut, pattern = "^MT-")
+
+p=VlnPlot(org70Mut, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_MUT <- FeatureScatter(org70Mut, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_MUT <- FeatureScatter(org70Mut, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+q=plot1_MUT + plot2_MUT
+
+
+org70MutQC <- subset(org70Mut, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 30)
+
+r=VlnPlot(org70MutQC, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1_MUT_QC <- FeatureScatter(org35MutQC, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2_MUT_QC <- FeatureScatter(org35MutQC, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+s=plot1_MUT_QC + plot2_MUT_QC
+
+mt <- grep("^MT-", rownames(org70MutQC))
+mt
+org70MutQC2 <- org70MutQC[-c(10013:10046), ]
+mt <- grep("^MT-", rownames(org70MutQC2))
+org70MutQC2$percent.mt <- NULL
+
+VlnPlot(org70MutQC2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+```{r}
+pdf("qc.pdf")
+print(c)
+print(d)
+print(e)
+print(f)
+print(h)
+print(i)
+print(j)
+print(k)
+print(l)
+print(m)
+print(n)
+print(o)
+print(p)
+print(q)
+print(r)
+print(s)
+
+dev.off()
+
+
+```
+
+
+##Merging of the three datasets and create metadata annotations of model type, Age and cell type based on La Manno paper for the embryo midbrain cells
+
+```{r}
+Emb.Mut.WT <- merge(x = objEMC_ct, y = list(org35MutQC2, orgWT35QC2, org70MutQC2, orgWT70QC2), add.cell.ids = c("Embryo","Org_MUT_35","Org_WT_35","Org_MUT_70", "Org_WT_70"), merge.data = TRUE, project = "Embryo_organoids")
+
+Emb.Mut.WT
+```
+
+```{r}
+
+groups <- sample(c(""), size = 12456, replace = TRUE)
+names(groups) <- colnames(Emb.Mut.WT)
+Emb.Mut.WT <- AddMetaData(object = Emb.Mut.WT, metadata = groups, col.name = "GENOTYPE")
+
+groups <- sample(c(""), size = 12456, replace = TRUE)
+names(groups) <- colnames(Emb.Mut.WT)
+Emb.Mut.WT <- AddMetaData(object = Emb.Mut.WT, metadata = groups, col.name = "Models")
+
+groups1 <- sample(c(""), size = 12456, replace = TRUE)
+names(groups1) <- colnames(Emb.Mut.WT)
+Emb.Mut.WT <- AddMetaData(object = Emb.Mut.WT, metadata = groups, col.name = "Age")
+
+
+Embryo <- grep("Embryo", colnames(Emb.Mut.WT)) #1:1977
+Emb.Mut.WT$Models[1:1977] <- "EM"
+Emb.Mut.WT$Age[1360:1646] <- "w6"
+Emb.Mut.WT$Age[1:131]<- "w7"
+Emb.Mut.WT$Age[1647:1977]<- "w8"
+Emb.Mut.WT$Age[132:453]<- "w9"
+Emb.Mut.WT$Age[454:962] <-"w10"
+Emb.Mut.WT$Age[963:1359] <- "w11"
+
+Mut35 <- grep("Org_MUT_35", colnames(Emb.Mut.WT)) #1978:4924
+Emb.Mut.WT$Models[1978:4924] <- "MO_MUT35"
+Emb.Mut.WT$GENOTYPE[1978:4924] <- "MUT"
+Emb.Mut.WT$Age[1978:4924] <- "35"
+
+
+WT35 <- grep("Org_WT_35", colnames(Emb.Mut.WT)) #4925:7789
+Emb.Mut.WT$Models[4925:7789] <- "MO_WT35"
+Emb.Mut.WT$GENOTYPE[4925:7789] <- "WT"
+Emb.Mut.WT$Age[4925:7789] <- "35"
+
+Mut70 <- grep("Org_MUT_70", colnames(Emb.Mut.WT)) #7790:10450
+Emb.Mut.WT$Models[7790:10450] <- "MO_MUT70"
+Emb.Mut.WT$GENOTYPE[7790:10450] <- "MUT"
+Emb.Mut.WT$Age[7790:10450] <- "70"
+
+WT70 <- grep("Org_WT_70", colnames(Emb.Mut.WT)) #10451:12456
+Emb.Mut.WT$Models[10451:12456] <- "MO_WT70"
+Emb.Mut.WT$GENOTYPE[10451:12456] <- "WT"
+Emb.Mut.WT$Age[10451:12456] <- "70"
+
+head(Emb.Mut.WT@meta.data, 5)
+
+```
+
+----------------------------------------------------------------
+
+##Integration analysis of the three datasets (midbrain embryo, midbrain WT and Mutant organoids), based on the immune-integration analysis in seurat tutorials: https://satijalab.org/seurat/v3.1/immune_alignment.html
+
+```{r}
+ifnb.list <- SplitObject(Emb.Mut.WT, split.by = "Models")
+
+ifnb.list <- lapply(X = ifnb.list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)})
+```
+
+```{r}
+anchors <- FindIntegrationAnchors(object.list = ifnb.list, dims = 1:20)
+combined.all <- IntegrateData(anchorset = anchors, dims = 1:20)
+```
+
+
+##Dimensional reducation and clustering
+```{r}
+DefaultAssay(combined.all) <- "integrated"
+
+# Run the standard workflow for visualization and clustering
+combined.all <- ScaleData(combined.all, verbose = FALSE)
+combined.all <- RunPCA(combined.all, npcs = 30, verbose = FALSE)
+p=ElbowPlot(combined.all)
+# Clustering
+combined.all <- RunUMAP(combined.all, reduction = "pca", dims = 1:20)
+combined.all <- FindNeighbors(combined.all, reduction = "pca", dims = 1:20)
+combined.all <- FindClusters(combined.all, resolution = 0.5)
+
+# Visualization
+p1 <- DimPlot(combined.all, reduction = "umap", group.by = "Models")
+p2 <- DimPlot(combined.all, reduction = "umap", label = TRUE, pt.size = 1.5)
+p3 <- DimPlot(combined.all, reduction = "umap", group.by = "Age")
+p4 <-DimPlot(combined.all, reduction = "umap", split.by = "Models")
+
+print(p1)
+print(p2)
+print(p3)
+print(p4)
+
+pdf("umap4.pdf")
+print(p1)
+print(p2)
+print(p3)
+print(p4)
+dev.off()
+
+pdf("elb4.pdf", width=10)
+print(p)
+dev.off()
+```
+
+#cluster markers
+```{r}
+DefaultAssay(combined.all) <- "RNA"
+combined.all <- NormalizeData(combined.all, normalization.method = "LogNormalize", scale.factor = 10000)
+all.genes <- rownames(combined.all)
+combined.all <- ScaleData(combined.all, features = all.genes)
+
+all.markers <- FindAllMarkers(combined.all, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+#write.csv(all.markers, "Z:\\16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 2 Cell clusters\\Originals\\Data\\Cell_cluster_markers_integrated_object_EM_MOs.csv")
+```
+
+-------------------------------------------------------------
+
+# switch to la mano2  then switch back for annotating
+#Regroup cluster based on similarities - give them similar names, change cluster 7 manually to 0 in La Mano analyis after further downstream analysis
+
+-------------------------------------------------------------
+
+
+##Annotation of the clusters basedon La Mano and markers below
+#rename clusters in graphs 7=0
+```{r}
+
+Idents(combined.all) = combined.all$seurat_clusters
+combined.all <-  RenameIdents(combined.all,  `0` = "Nb in vitro", `1` = "young Neurons", `2` = "mature DN", `3` = "Non DN Neurons", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "Nb in vitro", `8`="Endothelial cells")
+
+# Visualization
+p2 <- DimPlot(combined.all, reduction = "umap", label = TRUE)
+
+# Visualization
+p <- DimPlot(combined.all, reduction = "umap", split.by="Models",label =TRUE, pt.size = 1.5)
+
+
+p0 <- DimPlot(combined.all, reduction = "umap", label = TRUE, pt.size = 1.5 )
+p4 <- DimPlot(combined.all, reduction = "umap", group.by = "Age",label = TRUE)
+p1 <- DimPlot(combined.all, reduction = "umap", group.by = "Models",pt.size = 1.5)
+p5 <- DimPlot(combined.all, reduction = "umap", split.by = "Models",pt.size = 1.5)
+p3 <- DimPlot(combined.all, reduction = "umap", split.by = "Age",pt.size = 1.5)
+p6 <- DimPlot(combined.all, reduction = "umap", split.by = "GENOTYPE",pt.size = 1.5)
+
+pdf("umapall4n2.pdf", width =10)
+print(p0)
+print(p1)
+print(p3)
+print(p4)
+print(p5)
+print(p6)
+
+dev.off()
+
+
+```
+
+-------------------------------------------------------------
+
+-------------------------------------------------------------
+
+
+#add Columns combined cluster 
+```{r}
+#Idents(combined.all)
+combined.all$CELL_ID <-Idents(combined.all)
+combined.all$CELLID_Models <- paste(combined.all$CELL_ID, combined.all$Models, sep = "_")
+combined.all$GEN_AGE <- paste(combined.all$Age, combined.all$GENOTYPE, sep = "_")
+combined.all$CELLID_GEN <- paste(combined.all$CELL_ID, combined.all$GENOTYPE, sep = "_")
+combined.all$CELLID_GEN_AGE <- paste(combined.all$CELL_ID, combined.all$GENOTYPE, combined.all$Age, sep = "_")
+
+
+head(combined.all@meta.data, 100)
+
+p7 <- DimPlot(combined.all, reduction = "umap", split.by = "GEN_AGE",pt.size = 1.5)
+
+```
+# cell name indexes to import to Monocle
+```{r}
+
+
+a=grep( "Glia", combined.all$CELL_ID)
+b=grep( "Progenitors", combined.all$CELL_ID)
+c=grep( "NBs in vitro", combined.all$CELL_ID)
+d=grep( "mature DNs", combined.all$CELL_ID)
+e=grep( "young Neurons", combined.all$CELL_ID)
+f=grep( "Pericytes", combined.all$CELL_ID)
+g=grep( "Endothelial cells", combined.all$CELL_ID)
+h=grep( "Non DNs", combined.all$CELL_ID)
+
+
+```
+
+##Save integrated data with cell annotations (file is in the Data folder)
+##Save integrated data (file is in the Data folder)
+
+#IMPORTANT: if the UMAP is not reproducing the plots in figures (due to the Seurat updates), please load the rds.object
+
+-------------------------------------------------------------
+# change to Pseudotime - monocle here OR to Graphs over time
+-------------------------------------------------------------
+
+```{r}
+combined.all = readRDS("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\data_integrated_Embr_WT_MUT_all4.rds")
+
+Idents(combined.all) = combined.all$seurat_clusters
+combined.all <-  RenameIdents(combined.all,  `0` = "NBs in vitro", `1` = "young Neurons", `2` = "mature DNs", `3` = "Non DNs ", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "NBs in vitro", `8`="Endothelial cells")
+
+DimPlot(combined.all, reduction = "umap", label = TRUE)
+```
+
+#marker expression manually
+
+```{r}
+
+DefaultAssay(combined.all) <- "RNA"
+
+# Neuronal cells Mature, Young, Progenitors
+VlnPlot(combined.all, features = c("MAP2", "RBFOX3", "DLG4", "SYP", "TRIB1" ,"NEUROD1", "TUBB", "DCX", "TRIB2", "ASCL1"), slot = "counts", log = TRUE)
+# Neuronal cells subsets GLUT, GABA, SER
+VlnPlot(combined.all, features = c("GRIN1", "SLC17A7", "GLUL","GAD1", "SLC6A1","GABRA1", "TPH1","SLC6A4", "FEV", "CHAT","SLC18A3", "ACHE"), slot = "counts", log = TRUE)
+# Dopaminergic neurons and midbrain identity
+VlnPlot(combined.all, features = c("TH","PTX3", "OTX2" ,"EN2","EN2", "SOX6","FOXA2", "LMX1A","LMX1B", "KCNJ6","CALB1", "NR4A2", "SLC6A3", "SHH", "NKX6-1"), slot = "counts", log = TRUE)
+
+# Glia
+VlnPlot(combined.all, features = c("GFAP","S100B","AQP4","SLC1A3 ", "ALDH1L1", "CNP","CLDN11","MBP","OLIG1","CSPG4","AIF1"), slot = "counts", log = TRUE)
+# Stem cells
+VlnPlot(combined.all, features = c("FOXA2", "LMX1A","NES","SOX2","SOX1" ,"PAX6", "MSI1", "NOTCH1", "SOX10", "HES5", "HES1", "FABP7", "SLC1A3", "VIM"), slot = "counts", log = TRUE)
+
+VlnPlot(combined.all, features = c("CALB1", "NTN1","DCC","SLIT1","ROBO1","EPHNA1", "WNT1", "FGF8", "GRIN2B", "GAD2"), slot = "counts", log = TRUE)
+
+VlnPlot(combined.all, features = c("NR2F1"), slot = "counts", split.by ="Models" , log = TRUE)
+
+```
+
+#marker expression manually 2
+
+```{r}
+#stemness
+
+DotPlot(combined.all, features = c("SOX2","PAX6","HES5","ASCL1","SOX1","PAX3","DACH1","LMO3","NR2F1","PLAGL1","LIX1","HOXA2","FOXA2","IRX3TH"),dot.scale = 10) + RotatedAxis()
+
+#neuronal
+
+DotPlot(combined.all, features = c("BCL11A","CACNA2D2","CALB2","CD274","CELF4","CLSTN2","DLX1","DPYSL5","DYNC1I1,","EBF3","FOSL2","ISLR2","L1CAM","MEG3","NHLH2","NPAS4","NPY","NXPH4","RELN","RGMB","SLC17A6","SLC32A1","SST","STMN2","SYNGR3","SYT4","TMEM130","VGF","VSTM2L")) + RotatedAxis()
+
+#dopamine
+
+DotPlot(combined.all, features = c("NR4A2","PBX1","GRIA3","TH","EN1","TMCC3","NTM","DDC","CAMK2N1","ALDH1A1","APP","PDZRN4","PCDH10","MEG","ERBB4","SLC10A4","BEX5","FOXA2","NPY1R","GPC2","KCNJ6","LMX1B","HTRA2","HTRA3","HTRA4")) + RotatedAxis()
+
+#glutamatergic
+DotPlot(combined.all, features = c("SLC1A1","SLC1A2","SLC1A3","SLC17A6","SLC17A7","GLS","GLS2","GRIN1","GRIN2A","GRIN2B","GRIN2C","GRIN2D","GRIN3A","GRIN3B","GRINA","GRIA1","GRIA2","GRIA3","GRIA4","HTR5BP","HTR7P1","HTRA1")) + RotatedAxis()
+
+#gabba
+DotPlot(combined.all, features = c("GAD1","GAD2","GABARAP","GABARAPL1","GABARAPL2","GABARAPL3","ABAT")) + RotatedAxis()
+
+#serotonergic
+DotPlot(combined.all, features = c("SLC6A4","SLC18A2","TPH1","TPH2","FEV","HTR1D","HTR1DP1","HTR1E","HTR1F","HTR2A","HTR2A-AS1","HTR2B","HTR2C","HTR3A","HTR3B","HTR3D","HTR4","HTR5A","HTR5A-AS1")) + RotatedAxis()
+
+DotPlot(combined.all, features = c("ALDH1A1","TRHR", "CD24","SLC18A2",  "FGF1", "NRIP3", "MPP6", "NTS","CCK",  "SOX6", "GRIN2C", "SNCG", "IGF1", "ADCYAP1", "GRP", "LPL", "CALB1", "SLC32A1", "VIP", "TACR3","DCC", "UNC5H", "OTX2", "ZNF503 ", "SATB1")) + RotatedAxis()
+
+#stemness
+DotPlot(combined.all, features = c("SOX2","PAX6","HES5","ASCL1","SOX1","PAX3","DACH1","LMO3","NR2F1","PLAGL1","LIX1","HOXA2","FOXA2","IRX3TH", "SLC1A3", "MSI1", "VIM", "NES", "SHH")) + RotatedAxis()
+
+#neuronal
+neur=DotPlot(combined.all, features = c("BCL11A","CACNA2D2","CALB2","CD274","CELF4","CLSTN2","DLX1","DPYSL5","DYNC1I1,","EBF3","FOSL2","ISLR2","L1CAM","MEG3","NHLH2","NPAS4","NPY","NXPH4","RELN","RGMB","SLC17A6","SLC32A1","SST","STMN2","SYNGR3","SYT4","TMEM130","VGF","VSTM2L", "MAP2", "RBFOX3", "DLG4", "SYP", "TRIB1" ,"NEUROD1", "TUBB", "DCX", "TRIB2", "ASCL1")) + RotatedAxis()
+
+#dopamine
+dn=DotPlot(combined.all, features = c("NR4A2","PBX1","GRIA3","TH","EN1","TMCC3","NTM","DDC","CAMK2N1","ALDH1A1","APP","PDZRN4","PCDH10","MEG","ERBB4","SLC10A4","BEX5","NPY1R","GPC2","HTRA2","HTRA3","HTRA4","PTX3", "OTX2" ,"EN2", "SOX6","FOXA2", "LMX1A","LMX1B", "KCNJ6","CALB1","SLC6A3", "SHH", "NKX6-1" )) + RotatedAxis()
+
+
+#glutamatergic
+DotPlot(combined.all, features = c("SLC1A1","SLC1A2","SLC1A3","SLC17A6","SLC17A7","GLS","GLS2","GRIN1","GRIN2A","GRIN2B","GRIN2C","GRIN2D","GRIN3A","GRIN3B","GRINA","GRIA1","GRIA2","GRIA3","GRIA4","HTR5BP","HTR7P1","HTRA1")) + RotatedAxis()
+
+#gabba
+DotPlot(combined.all, features = c("GAD1","GAD2","GABARAP","GABARAPL1","GABARAPL2","GABARAPL3","ABAT","CHAT","SLC18A3", "ACHE")) + RotatedAxis()
+
+#serotonergic
+DotPlot(combined.all, features = c("SLC6A4","SLC18A2","TPH1","TPH2","FEV","HTR1D","HTR1DP1","HTR1E","HTR1F","HTR2A","HTR2A-AS1","HTR2B","HTR2C","HTR3A","HTR3B","HTR3D","HTR4","HTR5A","HTR5A-AS1")) + RotatedAxis()  
+
+#VTA
+DotPlot(combined.all, features = c("ALDH1A1","TRHR", "CD24","SLC18A2",  "FGF1", "NRIP3", "MPP6", "NTS","CCK",  "SOX6", "GRIN2C", "SNCG", "IGF1", "ADCYAP1", "GRP", "LPL", "CALB1", "SLC32A1", "VIP", "TACR3","DCC", "UNC5H", "OTX2", "ZNF503 ", "SATB1")) + RotatedAxis()
+
+# maturity
+matu=DotPlot(combined.all, features =c("
+ RNF157", "SPRYD7", "MIRAS" , "TUBB2A", "SKP1", "GNAI1", "MRAS", "ATP1A3", "ATP5J", "MAGED1", "ARL2", "MCFD2", "MORF4L2", "NRSN2", "NAP1L3", "NGRN", "OLFM1", "DKK3", "CCDC136", "COX6C", "HSP90AB1", "CALM2", "ATP1B1", "UQCRB","COX4I1", "PSMB5", "FXYD7", "RTN1", "C14ORF2", "SEC62", "COX7C", "CNTN1", "FAIM2", "SLC48A1", "RAB3B", "NPTXR","PDGFA", "NDUFC2", "BEX2", "UCHL1")
+) + RotatedAxis()
+
+
+
+pdf("marker.pdf", width = 10)
+print(neur)
+print(matu)
+print(dn)
+
+dev.off()
+```
+
+
+# Do heatmap with marker genes
+```{r}
+
+#"SLC17A6","SLC6A4","SLC18A2","SLC38A2","TPH2","FEV",, "SLC12A2"
+HP2=DoHeatmap(combined.all, features = c( "SLC1A3","SOX2","LMX1A","FOXA2","MSI1", "GFAP","S100B","NCAM1","STMN1","DCX","SYP","SYT1","MAP2","ROBO1","DCC", "TH","KCNJ6", "NR4A2", "CDH5","CSPG4"),  hjust= F, angle= 45, size = 2, draw.lines= 1)
+
+
+pdf("HP2.pdf", width = 10)
+print(HP2)
+dev.off()
+
+
+DotPlot(combined.all, features = c( "SLC1A3", "STMN1","GAT1",  "SYP", "SLC18A3",   "SHH", "VIM", "TH","MKI67",  "SOX2", "AIF1"))
+```
+
+
+#Do heatmaps based on variable features
+```{r}
+
+combined.all.marker <- FindVariableFeatures(combined.all, selection.method = "vst", nfeatures = 2000)
+
+```
+
+
+```{r}
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+
+top1000 <- head(VariableFeatures(combined.all.marker), 1000)
+
+
+genes_variable <- subset(combined.all, features = top1000)
+genes_variable_expr <- AverageExpression(genes_variable)$RNA
+
+
+a=as.matrix(genes_variable_expr)
+
+NormalisedData_Zscore <- t(apply(as.matrix(genes_variable_expr),1,Z_Normalize))
+
+
+pheatmap(NormalisedData_Zscore, colorRampPalette(rev(brewer.pal(n = 5, name =
+ "RdYlBu")))(100), show_rownames = F, angle_col = 45,  fontsize = 5, cellwidth = 20, cellheight = 0.4)
+
+
+
+```
+
+```{r}
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+
+top100 <- head(VariableFeatures(combined.all.marker), 100)
+
+
+genes_variable <- subset(combined.all, features = top100)
+genes_variable_expr <- AverageExpression(genes_variable)$RNA
+
+
+a=as.matrix(genes_variable_expr)
+
+NormalisedData_Zscore <- t(apply(as.matrix(genes_variable_expr),1,Z_Normalize))
+
+
+pheatmap(NormalisedData_Zscore, colorRampPalette(rev(brewer.pal(n = 5, name =
+ "RdYlBu")))(100), show_rownames = F, angle_col = 45,  fontsize = 7, cellwidth = 20, cellheight = 1)
+
+
+
+```
+
+
+```{r}
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+
+top100 <- head(VariableFeatures(combined.all.marker), 100)
+
+
+genes_variable <- subset(combined.all, features = top100)
+genes_variable_expr <- AverageExpression(genes_variable)$RNA
+
+
+a=as.matrix(genes_variable_expr)
+
+NormalisedData_Zscore <- t(apply(as.matrix(genes_variable_expr),1,Z_Normalize))
+
+
+pheatmap(NormalisedData_Zscore, colorRampPalette(rev(brewer.pal(n = 5, name =
+ "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize = 5, cellwidth = 20, cellheight = 5)
+
+
+
+```
+
+
+```{r}
+library(edgeR)
+library(Seurat)
+library(cowplot)
+library(patchwork)
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+```
+
+
+
+#DEG between WT and MUT
+```{r}
+
+WTvsMUT<- subset(combined.all)
+Idents(WTvsMUT) <- "GENOTYPE"
+levels(WTvsMUT)
+
+WTvsMUT_comb <- FindMarkers(WTvsMUT, ident.1 = "WT", ident.2 = "MUT", verbose = FALSE)
+head(WTvsMUT, n = 15)
+head(combined.all@meta.data, 100)
+
+
+#write.csv(WTvsMUT_comb, "C:/Users/sarah.nickels/Desktop/data/WTvsMUT.csv" )
+
+
+```
+
+#Do heatmaps
+```{r}
+
+combined.all <- AddMetaData(object = combined.all, metadata = groups, col.name = "Model")
+
+combined.all$Model[1:1977] <- "Embryo"
+combined.all$Model[1978:12456] <- "ORG"
+
+Idents(combined.all)   = "Model"
+
+Ident_ORGA <- subset(combined.all, idents= "ORG")
+levels(Ident_ORGA)
+Idents(Ident_ORGA)   = "Models"
+
+head(combined.all@meta.data, 100)
+
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 100)
+
+genes_variablea <- subset(Ident_ORGA, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG')
+
+
+```
+
+
+
+
+
+
+
+#Do heatmaps
+```{r}
+
+WTvsMUT<- subset(combined.all)
+Idents(WTvsMUT) <- "Models"
+
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 100)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmap.pdf")
+
+
+```
+
+
+```{r}
+
+WTvsMUT<- subset(combined.all)
+Idents(WTvsMUT) <- "Models"
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 1000)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = F, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 1, main='Expression of Top100 DEG', filename= "heatmap3.pdf")
+
+
+```
+
+```{r}
+
+WTvsMUT<- subset(combined.all)
+Idents(WTvsMUT) <- "GEN_AGE"
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 1000)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = F, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 1, main='Expression of Top100 DEG', filename= "heatmap4.pdf")
+
+
+```
+
+```{r}
+
+WTvsMUT<- subset(combined.all)
+Idents(WTvsMUT) <- "GEN_AGE"
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 100)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmap2.pdf")
+
+
+```
+
+```{r}
+
+WTvsMUT<- subset(combined.all)
+Idents(WTvsMUT) <- "CELLID_GEN"
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 1000)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = F, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 2, main='Expression of Top100 DEG', filename= "heatmap6.pdf")
+
+
+```
+
+```{r}
+
+WTvsMUT<- subset(combined.all)
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 100)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmap5.pdf")
+
+
+```
+
+```{r}
+
+WTvsMUT<- subset(combined.all)
+
+Idents(WTvsMUT) <- "CELLID_GEN_AGE" 
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(WTvsMUT_comb), 100)
+
+genes_variablea <- subset(WTvsMUT, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = F, angle_col = 90,  fontsize_col = 10, cellwidth = 10, cellheight = 2, main='Expression of Top100 DEG', filename= "heatmap7.pdf")
+
+
+```
+
+
+```{r}
+
+Idents(Ident_ORGA) <- "CELLID_GEN_AGE"
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+top100a <- head(rownames(gene_module_df), 100)
+
+genes_variablea <- subset(Ident_ORGA, features = top100a)
+genes_variable_expra <- AverageExpression(genes_variablea)$RNA
+
+
+a=as.matrix(genes_variable_expra)
+
+NormalisedData_Zscorea <- t(apply(as.matrix(genes_variable_expra),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 PTG', filename= "heatmapPTG.pdf")
+
+
+```

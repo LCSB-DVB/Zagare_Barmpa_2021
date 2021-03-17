@@ -1,0 +1,575 @@
+---
+title: "Comparison to embryonic cortex and correlation analysis"
+output: html_document
+---
+```{r}
+library(Seurat)
+library(ggplot2)
+
+library(sctransform)
+library(tidyverse)
+```
+```{r}
+#load all data from the Script1
+```
+
+##Data load and merging
+##Load embryonic midbrain and organoid data from the script: Data_load_and_merge
+```{r}
+#Load embryonic prefrontal cortex and merge with embryonic midbrain and WT organoid data
+
+hPEC.dec <- read.table("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Embryo_Cortex_Zhong_et_al_20018\\GSE104276_all_pfc_2394_UMI_TPM_NOERCC.xls", sep = "\t", header =T, row.names = 1)
+
+#convert decimal values to integer
+hPEC <- hPEC.dec %>% floor()
+
+hPEC <- as(as.matrix(hPEC), "dgCMatrix")
+
+hPEC <- CreateSeuratObject(counts = hPEC, project = "prefrontal_cortex", min.cells = 3, min.features = 200)
+
+VlnPlot(hPEC, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+FeatureScatter(hPEC, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+
+#Data has good quality
+
+```
+
+with 70d
+```{r}
+Mid.Cor.Org <- merge(x = objEMC_ct, y = list(orgWT35QC2,hPEC,orgWT70QC2), add.cell.ids = c("EM","MO_WT_D35","EC","MO_WT_D70"), merge.data = TRUE, project = "Embryo_organoids")
+
+Mid.Cor.Org
+```
+
+```{r}
+groups <- sample(c(""), size = 9226, replace = TRUE)
+names(groups) <- colnames(Mid.Cor.Org)
+Mid.Cor.Org <- AddMetaData(object = Mid.Cor.Org, metadata = groups, col.name = "Models")
+
+groups1 <- sample(c(""), size = 9226, replace = TRUE)
+names(groups1) <- colnames(Mid.Cor.Org)
+Mid.Cor.Org <- AddMetaData(object = Mid.Cor.Org, metadata = groups, col.name = "Age")
+
+Midbrain <- grep("EM", colnames(Mid.Cor.Org)) 
+WTD35 <- grep("MO_WT_D35", colnames(Mid.Cor.Org)) 
+Cortex <- grep("EC", colnames(Mid.Cor.Org)) 
+WTD70 <- grep("MO_WT_D70", colnames(Mid.Cor.Org)) 
+
+Mid.Cor.Org$Models[1:1977] <- "EM"
+Mid.Cor.Org$Models[1978:4842] <- "MO_WT35"
+Mid.Cor.Org$Models[4843:7220] <- "EC"
+Mid.Cor.Org$Models[7221:9226] <- "MO_WT70"
+
+Mid_w6 <- grep("week.6", colnames(Mid.Cor.Org)) #1360:1646
+Mid_w7 <- grep("week.7",colnames(Mid.Cor.Org)) #1:131
+Mid_w8 <- grep("week.8", colnames(Mid.Cor.Org)) #1647:1977
+Mid_w9 <- grep("week.9", colnames(Mid.Cor.Org)) #132:453
+Mid_w10 <- grep("week.10", colnames(Mid.Cor.Org)) #454:962
+Mid_w11 <- grep("week.11", colnames(Mid.Cor.Org)) #963:1359
+
+Mid.Cor.Org$Age[1360:1646] <- "w6"
+Mid.Cor.Org$Age[1:131]<- "w7"
+Mid.Cor.Org$Age[1647:1977]<- "w8"
+Mid.Cor.Org$Age[132:453]<- "w9"
+Mid.Cor.Org$Age[454:962] <-"w10"
+Mid.Cor.Org$Age[963:1359] <- "w11"
+Mid.Cor.Org$Age[1978:4842] <- "MO_WT35"
+Mid.Cor.Org$Age[4843:7220] <- "EC"
+Mid.Cor.Org$Age[7221:9226] <- "MO_WT70"
+
+
+```
+```{r}
+ifnb.list <- SplitObject(Mid.Cor.Org, split.by = "Models")
+
+ifnb.list <- lapply(X = ifnb.list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)})
+```
+
+```{r}
+anchors <- FindIntegrationAnchors(object.list = ifnb.list, dims = 1:20)
+combined.all <- IntegrateData(anchorset = anchors, dims = 1:20)
+```
+###Data scaling and normalization using SCTransform
+```{r}
+data_SCT <- SCTransform(combined.all, vars.to.regress = "nCount_RNA", verbose = FALSE)
+```
+
+##Dimensional reduction and UMAP
+```{r}
+
+data_SCT <- RunPCA(data_SCT, verbose = FALSE)
+ElbowPlot(data_SCT)
+
+data_SCT <- FindNeighbors(data_SCT, dims = 1:15, verbose = FALSE)
+data_SCT <- FindClusters(data_SCT, verbose = FALSE)
+data_SCT <- RunUMAP(data_SCT, dims = 1:15, verbose = FALSE)
+
+# Visualization
+DimPlot(data_SCT, reduction = "umap", group.by = "Models")
+DimPlot(data_SCT, reduction = "umap", group.by = "Age")
+DimPlot(data_SCT, reduction = "umap", label = TRUE)
+
+```
+
+
+
+```{r}
+data_SCT$Models<-factor(data_SCT$Models,levels=c("EM","MO_WT35","MO_WT70","EC"))
+```
+
+```{r}
+
+p1<-data_SCT@meta.data %>%
+  #mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = data_SCT@assays$RNA@data['EN1',]) %>%
+ggplot(aes(x = Models, y = expression, fill=Models)) +
+#geom_boxplot() +
+    geom_jitter(alpha = 0.5, color = "darkblue")+
+  theme_bw()+
+     theme(axis.text.x=element_text(angle = 45, hjust = 1, size=14),axis.title.y=element_text(size=14), axis.title.x = element_blank(), legend.position = "none", title=element_text(size=16))+labs(title="EN1")
+
+p2<-data_SCT@meta.data %>%
+  #mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = data_SCT@assays$RNA@data['EN2',]) %>%
+ggplot(aes(x = Models, y = expression, fill=Models)) +
+#geom_boxplot() +
+    geom_jitter(alpha = 0.5, color = "darkblue")+
+  theme_bw()+
+     theme(axis.text.x=element_text(angle = 45, hjust = 1, size=14),axis.title.y=element_text(size=14), axis.title.x = element_blank(), legend.position = "none", title=element_text(size=16))+labs(title="EN2")
+
+
+p3<-data_SCT@meta.data %>%
+  #mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = data_SCT@assays$RNA@data['FOXA2',]) %>%
+ggplot(aes(x = Models, y = expression, fill=Models)) +
+#geom_boxplot() +
+    geom_jitter(alpha = 0.5, color = "darkblue")+
+  theme_bw()+
+      theme(axis.text.x=element_text(angle = 45, hjust = 1, size=14),axis.title.y=element_text(size=14), axis.title.x = element_blank(), legend.position = "none", title=element_text(size=16))+labs(title="FOXA2")
+
+p4<-data_SCT@meta.data %>%
+  #mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = data_SCT@assays$RNA@data['TH',]) %>%
+ggplot(aes(x = Models, y = expression, fill=Models)) +
+#geom_boxplot() +
+    geom_jitter(alpha = 0.5, color = "darkblue")+
+  theme_bw()+
+     theme(axis.text.x=element_text(angle = 45, hjust = 1, size=14),axis.title.y=element_text(size=14), axis.title.x = element_blank(), legend.position = "none", title=element_text(size=16))+labs(title="TH")
+
+p5<-DotPlot(data_SCT, features = c("TH", "FOXA2","EN1", "EN2"),cols = c("blue", "red"),dot.scale = 12, group.by = "Models", assay = "RNA" )+ RotatedAxis() + labs(title="DA neuron lineage markers")+theme(axis.title.x=element_blank(),axis.title.y=element_blank(),title = element_text(size=18))
+    
+```
+```{r}
+pdf("Midbrain_markers.pdf")
+print(p1)
+print(p2)
+print(p3)
+print(p4)
+print(p5)
+
+dev.off()
+
+```
+
+
+##Find and plot the most variable genes
+##all genes
+```{r}
+Idents(data_SCT) = data_SCT$Models
+data_variable <- FindVariableFeatures(data_SCT, selection.method = "vst", nfeatures = 2000)
+top500 <- head(VariableFeatures(data_variable), 500)
+genes_variable <- subset(data_SCT, features = top500)
+genes_variable_expr <- AverageExpression(genes_variable)$RNA
+```
+
+```{r}
+library(pheatmap)
+library(RColorBrewer)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+```
+
+```{r}
+NormalisedData_Zscore <- t(apply(as.matrix(genes_variable_expr),1,Z_Normalize))
+
+
+pheatmap(NormalisedData_Zscore, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = F, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 0.4)
+```
+
+##mutual genes
+```{r}
+#w/o MUT
+genes_mutual<-intersect(intersect(intersect(rownames(objEMC_ct),rownames(orgWT35QC2)), rownames(hPEC)), rownames(orgWT70QC2)) #12744
+
+genesM_variable_expr <- subset(data_SCT, features = genes_mutual)
+
+data_Mutual_variable <- FindVariableFeatures(genesM_variable_expr, selection.method = "vst", nfeatures = 2000)
+
+rm(top500)
+top500 <- head(VariableFeatures(data_Mutual_variable), 500)
+
+genes_M <- subset(genesM_variable_expr, features = top500)
+
+genes_variable_expr_M <- AverageExpression(genes_M)$SCT
+
+NormalisedData_Zscore <- t(apply(as.matrix(genes_variable_expr_M),1,Z_Normalize))
+
+
+pheatmap(NormalisedData_Zscore, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = F, angle_col = 45, fontsize_col = 14, cellwidth = 60, cellheight = 0.4)
+```
+
+
+##Correlation2 (MUTUAL GENES)
+```{r}
+Idents(genesM_variable_expr) = genesM_variable_expr$Models
+Cor.av.exp <- AverageExpression(genesM_variable_expr)$SCT
+dim(Cor.av.exp)
+Cor.av.exp <- as.data.frame(cor(Cor.av.exp, method = "spearman"))
+Cor.av.exp$x <- rownames(Cor.av.exp)
+Cor.data <- tidyr::gather(data = Cor.av.exp, y, correlation, Cor.av.exp$x)
+p <- ggplot(Cor.data, aes(x, y, fill = correlation)) + geom_raster()+scale_fill_gradientn(colors = c("#00AFBB", "white",  "#FC4E07"))+ 
+  labs(title=" ")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1),
+        axis.text.y=element_text(size=12),
+        axis.title.x = element_blank(),axis.title.y=element_blank())+
+  coord_fixed()
+#t<- cowplot::ggdraw(cowplot::add_sub(p, "Spearman correlation between models",hjust=0, size=9))
+  print(p)
+```
+-------------------------------------------------------------------------------------------------------
+
+#Merge including MUT organoid
+```{r}
+Mid.Cor.Org <- merge(x = objEMC_ct, y = list(org35MutQC2, orgWT35QC2,orgWT70QC2, org70MutQC2, hPEC), add.cell.ids = c("EM","d35MO_MUT","d35MO_WT","d70MO_WT","d70MO_MUT","EC"), merge.data = TRUE, project = "Embryo_organoids")
+ 
+Mid.Cor.Org
+```
+
+```{r}
+groups <- sample(c(""), size = 14834, replace = TRUE)
+names(groups) <- colnames(Mid.Cor.Org)
+Mid.Cor.Org <- AddMetaData(object = Mid.Cor.Org, metadata = groups, col.name = "Models")
+
+groups1 <- sample(c(""), size = 14834, replace = TRUE)
+names(groups1) <- colnames(Mid.Cor.Org)
+Mid.Cor.Org <- AddMetaData(object = Mid.Cor.Org, metadata = groups, col.name = "Age")
+
+Midbrain <- grep("EM", colnames(Mid.Cor.Org)) #1:1977
+Mut35 <- grep("d35MO_MUT", colnames(Mid.Cor.Org)) #1978:4924
+WT35 <- grep("d35MO_WT", colnames(Mid.Cor.Org)) #4925:7789
+Mut70 <- grep("d70MO_MUT", colnames(Mid.Cor.Org)) #9796:12456
+WT70 <- grep("d70MO_WT", colnames(Mid.Cor.Org)) #7790:9795
+Cortex <- grep("EC", colnames(Mid.Cor.Org)) #12457:14834
+
+Mid.Cor.Org$Models[1:1977] <- "EM"
+Mid.Cor.Org$Models[1978:4924] <- "MO_MUT35"
+Mid.Cor.Org$Models[4925:7789] <- "MO_WT35"
+Mid.Cor.Org$Models[7790:9795] <- "MO_WT70"
+Mid.Cor.Org$Models[9796:12456] <- "MO_MUT70"
+Mid.Cor.Org$Models[12457:14834] <- "EC"
+
+Mid_w6 <- grep("week.6", colnames(Mid.Cor.Org)) #1360:1646
+Mid_w7 <- grep("week.7",colnames(Mid.Cor.Org)) #1:131
+Mid_w8 <- grep("week.8", colnames(Mid.Cor.Org)) #1647:1977
+Mid_w9 <- grep("week.9", colnames(Mid.Cor.Org)) #132:453
+Mid_w10 <- grep("week.10", colnames(Mid.Cor.Org)) #454:962
+Mid_w11 <- grep("week.11", colnames(Mid.Cor.Org)) #963:1359
+
+Mid.Cor.Org$Age[1360:1646] <- "w6"
+Mid.Cor.Org$Age[1:131]<- "w7"
+Mid.Cor.Org$Age[1647:1977]<- "w8"
+Mid.Cor.Org$Age[132:453]<- "w9"
+Mid.Cor.Org$Age[454:962] <-"w10"
+Mid.Cor.Org$Age[963:1359] <- "w11"
+Mid.Cor.Org$Age[1978:4924] <- "MO_MUT35"
+Mid.Cor.Org$Age[4925:7789] <- "MO_WT35"
+Mid.Cor.Org$Age[7790:9795] <- "MO_WT70"
+Mid.Cor.Org$Age[9796:12456] <- "MO_MUT70"
+Mid.Cor.Org$Age[12457:14834] <- "EC"
+
+```
+
+###Data scaling and normalization using SCTransform
+```{r}
+memory.limit(size=56000)
+data_SCT <- SCTransform(Mid.Cor.Org, vars.to.regress = "nCount_RNA", verbose = FALSE)
+```
+
+
+##Correlation (MUTUAL GENES)
+```{r}
+#with MUT
+genes_mutual<-intersect(intersect(intersect(intersect(intersect(rownames(objEMC_ct),rownames(orgWT35QC2)), rownames(org35MutQC2)),rownames(org70MutQC2)),rownames(org70MutQC2)), rownames(hPEC)) #12638
+
+genesM_variable_expr <- subset(data_SCT, features = genes_mutual)
+
+Idents(genesM_variable_expr) = genesM_variable_expr$Models
+orig.levels <- levels(genesM_variable_expr)
+Idents(genesM_variable_expr) <- gsub(pattern = " ", replacement = "_", x = Idents(genesM_variable_expr))
+orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+levels(genesM_variable_expr) <- orig.levels
+cluster.averages <- AverageExpression(genesM_variable_expr, return.seurat = TRUE)
+
+a<-CellScatter(cluster.averages, cell1 = "EM", cell2 = "MO_WT35")
+b<-CellScatter(cluster.averages, cell1 = "EM", cell2 = "MO_MUT35") 
+c<-CellScatter(cluster.averages, cell1 = "EC", cell2 = "MO_WT35")
+d<-CellScatter(cluster.averages, cell1 = "EC", cell2 = "MO_MUT35")
+ggarrange(a, c, b, d, ncol = 2, nrow = 2)
+
+CellScatter(cluster.averages, cell1 = "EC", cell2 = "EM")
+
+```
+```{r}
+#with MUT
+
+
+a<-CellScatter(cluster.averages, cell1 = "EM", cell2 = "MO_WT70")
+b<-CellScatter(cluster.averages, cell1 = "EM", cell2 = "MO_MUT70") 
+c<-CellScatter(cluster.averages, cell1 = "EC", cell2 = "MO_WT70")
+d<-CellScatter(cluster.averages, cell1 = "EC", cell2 = "MO_MUT70")
+ggarrange(a, c, b, d, ncol = 2, nrow = 2)
+
+CellScatter(cluster.averages, cell1 = "EC", cell2 = "EM")
+
+```
+
+```{r}
+#all genes, not only mutual
+Idents(data_SCT) = data_SCT$Models
+orig.levels <- levels(data_SCT)
+Idents(data_SCT) <- gsub(pattern = " ", replacement = "_", x = Idents(data_SCT))
+orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+levels(data_SCT) <- orig.levels
+cluster.averages <- AverageExpression(data_SCT, return.seurat = TRUE)
+
+a<-CellScatter(cluster.averages, cell1 = "EM", cell2 = "MO_WT35")
+#b<-CellScatter(cluster.averages, cell1 = "Embryonic_Midbrain", cell2 = "OrgMUT")
+c<-CellScatter(cluster.averages, cell1 = "EC", cell2 = "MO_WT70")
+#d<-CellScatter(cluster.averages, cell1 = "Embryonic_Cortex", cell2 = "OrgMUT")
+ggarrange(a, c, ncol = 2, nrow = 1)
+
+CellScatter(cluster.averages, cell1 = "EC", cell2 = "EM")
+
+```
+
+#Negative control (comparison Midbrain embryo with cortex organoid)
+#merge with organoid cortex
+```{r}
+library(Matrix)
+# Read in `matrix.mtx`
+counts <- readMM("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Cortex_organoid_ GSE130238_Trujillo_et_al_2019\\1_mon_hCos\\matrix.mtx")
+
+# Read in `genes.tsv`
+genes <- read_tsv("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Cortex_organoid_ GSE130238_Trujillo_et_al_2019\\1_mon_hCos\\genes.tsv", col_names = FALSE)
+gene_ids <- genes$X1
+
+# Read in `barcodes.tsv`
+cell_ids <- read_tsv("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\Cortex_organoid_ GSE130238_Trujillo_et_al_2019\\1_mon_hCos\\barcodes.tsv", col_names = FALSE)$X1
+
+rownames(counts) <- gene_ids
+colnames(counts) <- cell_ids
+
+dataCortical <- as(as.matrix(counts), "dgCMatrix")
+Cort <- CreateSeuratObject(counts = dataCortical, project = "CorticalData", min.cells = 3, min.features = 200)
+
+VlnPlot(Cort, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+FeatureScatter(Cort, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+
+```
+```{r}
+Mid.Cor <- merge(x = objEMC_ct, y = Cort , add.cell.ids = c("EC","CO"), merge.data = TRUE, project = "Embryo_organoids")
+
+Mid.Cor
+
+```
+
+
+```{r}
+groups <- sample(c(""), size = 6809, replace = TRUE)
+names(groups) <- colnames(Mid.Cor)
+Mid.Cor <- AddMetaData(object = Mid.Cor, metadata = groups, col.name = "Models")
+
+groups1 <- sample(c(""), size = 6809, replace = TRUE)
+names(groups1) <- colnames(Mid.Cor)
+Mid.Cor <- AddMetaData(object = Mid.Cor, metadata = groups, col.name = "Age")
+
+Midbrain <- grep("Embryonic_Midbrain", colnames(Mid.Cor)) #1:1977
+#Mut <- grep("OrgMUT", colnames(Mid.Cor.Org)) #1978:4897
+#WT <- grep("OrgWT", colnames(Mid.Cor.Org)) #4898:7762
+#Cortex <- grep("Embryonic_Cortex", colnames(Mid.Cor.Org)) #7763:10141
+CortexOrg <- grep("Cortex_organoid", colnames(Mid.Cor)) #7763:10141
+
+Mid.Cor$Models[1:1977] <- "EM"
+Mid.Cor$Models[1978:6809] <- "CO"
+
+Mid.Cor$Age[1360:1646] <- "w6"
+Mid.Cor$Age[1:131]<- "w7"
+Mid.Cor$Age[1647:1977]<- "w8"
+Mid.Cor$Age[132:453]<- "w9"
+Mid.Cor$Age[454:962] <-"w10"
+Mid.Cor$Age[963:1359] <- "w11"
+
+Mid.Cor$Age[1978:6809] <- "CO"
+
+```
+
+
+###Data scaling and normalization using SCTransform
+```{r}
+data_SCT <- SCTransform(Mid.Cor, vars.to.regress = "nCount_RNA", verbose = FALSE)
+```
+
+
+```{r}
+genes_mutual<-intersect(rownames(objEMC_ct),rownames(Cort)) 
+
+genesM_variable_expr <- subset(data_SCT, features = genes_mutual)
+
+Idents(genesM_variable_expr) = genesM_variable_expr$Models
+orig.levels <- levels(genesM_variable_expr)
+Idents(genesM_variable_expr) <- gsub(pattern = " ", replacement = "_", x = Idents(genesM_variable_expr))
+orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+levels(genesM_variable_expr) <- orig.levels
+cluster.averages <- AverageExpression(genesM_variable_expr, return.seurat = TRUE)
+
+p<-CellScatter(cluster.averages, cell1 = "EM", cell2 = "CO")
+
+pdf("CortexOrganoid_EM.pdf")
+print(p)
+dev.off()
+
+#result the same for all genes (no mutual genes?)
+```
+
+
+------------------------------------------------------------------------------------------------------------------------
+#w/o cortex
+
+```{r}
+combined.all = readRDS("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\data_integrated_Embr_WT_MUT_all4.rds")
+```
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+combined.all <-  RenameIdents(combined.all,  `0` = "NBs in vitro", `1` = "young Neurons", `2` = "mature DNs", `3` = "Non DNs ", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "NBs in vitro", `8`="Endothelial cells")
+
+DimPlot(combined.all, reduction = "umap", label = TRUE)
+```
+
+
+
+##Correlation between embryonic midbrain TP and organoids
+```{r}
+Idents(combined.all) <- "Models"
+modelsTP<-subset(combined.all, idents  = c("MO_WT35", "MO_MUT35", "MO_WT70", "MO_MUT70","EM"))
+
+Idents(modelsTP) <- "Age"
+table(Idents(modelsTP))
+
+cluster.averages <- AverageExpression(modelsTP)
+head(cluster.averages[["RNA"]][, 1:5])
+
+orig.levels <- levels(modelsTP)
+Idents(modelsTP) <- gsub(pattern = " ", replacement = "_", x = Idents(modelsTP))
+orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+levels(modelsTP) <- orig.levels
+cluster.averages <- AverageExpression(modelsTP, return.seurat = TRUE)
+cluster.averages
+```
+##WT35
+```{r}
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_WT35")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_WT35")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_WT35")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_WT35")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_WT35")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_WT35")
+figure<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+# fig<-annotate_figure(figure,
+#               top = text_grob("Correlation between embryonic midbrain time points and WT org D35", color = "black", face = "bold", size = 16),
+#                 bottom = text_grob("Average gene expression", color = "black",
+#                                    hjust = 1, x = 1, face = "italic", size = 10))
+
+print(figure)
+```
+
+##MUT35
+```{r}
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_MUT35")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_MUT35")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_MUT35")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_MUT35")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_MUT35")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_MUT35")
+figure<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+# fig<-annotate_figure(figure,
+#               top = text_grob("Correlation between embryonic midbrain time points and MUT org D35", color = "black", face = "bold", size = 16),
+#                 bottom = text_grob("Average gene expression", color = "black",
+#                                    hjust = 1, x = 1, face = "italic", size = 10))
+
+print(figure)
+```
+
+
+##WT70
+```{r}
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_WT70")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_WT70")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_WT70")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_WT70")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_WT70")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_WT70")
+figure<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+# fig<-annotate_figure(figure,
+#               top = text_grob("Correlation between embryonic midbrain time points and WT org D35", color = "black", face = "bold", size = 16),
+#                 bottom = text_grob("Average gene expression", color = "black",
+#                                    hjust = 1, x = 1, face = "italic", size = 10))
+
+print(figure)
+```
+
+##MUT70
+```{r}
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_MUT70")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_MUT70")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_MUT70")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_MUT70")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_MUT70")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_MUT70")
+figure<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+# fig<-annotate_figure(figure,
+#               top = text_grob("Correlation between embryonic midbrain time points and MUT org D35", color = "black", face = "bold", size = 16),
+#                 bottom = text_grob("Average gene expression", color = "black",
+#                                    hjust = 1, x = 1, face = "italic", size = 10))
+
+print(figure)
+```
+
+```{r}
+DoHeatmap(cluster.averages, features = unlist(TopFeatures(combined.all[["pca"]], balanced = TRUE)), size = 3, 
+    draw.lines = FALSE)
+
+```
+
+
+
+
+```{r}
+sessionInfo()
+```
+
+

@@ -1,0 +1,863 @@
+---
+title: "DEGs_plots_all4"
+author: "Kiki Barmpa"
+date: "18/12/2020"
+output: html_document
+---
+
+
+```{r}
+library(Seurat)
+library(cowplot)
+library(patchwork)
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+library(pheatmap)
+library(RColorBrewer)
+library(EnhancedVolcano)
+```
+##Increase the memory
+```{r}
+memory.limit(size=32000)
+```
+
+
+##Load object integrated and annotated
+```{r}
+combined.all = readRDS("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\data_integrated_annotated_Embr_WT_MUTall4.rds")
+
+Idents(combined.all) = combined.all$seurat_clusters
+combined.all <-  RenameIdents(combined.all,  `0` = "NBs in vitro", `1` = "young Neurons", `2` = "mature DNs", `3` = "Non DNs ", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "NBs in vitro", `8`="Endothelial cells")
+
+DimPlot(combined.all, reduction = "umap", label = TRUE)
+```
+
+
+##Check the annotations
+```{r}
+
+Idents(combined.all) = combined.all$CELL_ID
+levels(combined.all)
+```
+
+
+##Differential expressed genes in total and the ones with padjvalue < 0.05
+```{r}
+Idents(combined.all) = combined.all$Models
+
+DEGS.all.MUTvsWT.35 <- FindMarkers(combined.all, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", only.pos = F)
+DEGS.all.MUTvsWT.70 <- FindMarkers(combined.all, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", only.pos = F)
+#DEGS.all.MUT.70vs35 <- FindMarkers(combined.all, ident.1 = "OrgMUT70", ident.2 = "OrgMUT35", only.pos = F)  
+
+DEGS.all.MUTvsWT.35s <- filter(DEGS.all.MUTvsWT.35, p_val_adj < 0.05)
+write.csv(DEGS.all.MUTvsWT.35s, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210202_significant_MUTvsWT_35.csv")
+
+DEGS.all.MUTvsWT.70s <- filter(DEGS.all.MUTvsWT.70, p_val_adj < 0.05)
+write.csv(DEGS.all.MUTvsWT.70s, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210202_significant_MUTvsWT_70.csv")
+
+Idents(combined.all) = combined.all$GENOTYPE
+DEGS.all.MUTvsWT <- FindMarkers(combined.all, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+signif <- filter(DEGS.all.MUTvsWT, p_val_adj < 0.05)
+
+DEGS.all.MUTvsWT_top100 <-signif %>% top_n(n = 100, wt = -p_val_adj)
+write.csv(DEGS.all.MUTvsWT_top100, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210126_top100_significant_MUTvsWT.csv")
+```
+
+
+##Fold change graphs for genes of interest
+```{r}
+gene_list1 <-c("YWHAH", "GSK3B", "HSP90B1", "MYO5A", "STMN1", "PRDX1", "DNM1", "TUBBA1B", "SLIT1", "UCHL1", "SNCAIP", "SPTBN1", "SNCA","PRKAR1A","PRKAA1","PRKRIR", "TAOK1","PRKACA","PRKACB", "ACTB", "ACTG1", "TUBA1A", "TUBA1B", "TUBB2B", "RPS27A","CHL1", "MAP2", "SLC17A6", "SLC18A2", "VIM","APP", "CREBBP","APBB1", "NCOR1", "FOS", "CPE", "DYNLL1", "HAP1", "PCLO", "NTRK2", "UBC", "RPS27A", "UBA52", "CALM1", "CALM3", "EPB41", "PHIP","CNTN1","MYL6","MYL6B","NTN1", "DBN1", "TMSB4X","COL1A1","COL1A2","TIMP2","NEFM", "COL3A1","VCAN","GNAS","PRKAR2B","AFDN", "ROCK1", "LSM11", "MAPT","TUBB","TIMP1","CHGB","PTPRN","SYT1","PBX1", "CFL", "CALM3", "DCC", "SLK", "FN1", "PAK3", "DBN1")
+
+subset_genes <- DEGS.all.MUTvsWT[gene_list1,]
+subset_genes <- na.omit(subset_genes)
+
+DEGs_MUTvsWTMOs <- ggplot(subset_genes, aes(y=avg_logFC, x=rownames(subset_genes, ))) + 
+    geom_bar(aes(fill = avg_logFC), stat = "identity", width = 0.5)+
+  theme(aspect.ratio = 2/1)+
+  scale_fill_distiller(palette = "Blues")+
+  theme_light()+
+  labs(y = "Average_log(FC)", x="DEG Genes")+
+   theme(axis.text.x = element_text(hjust=1, size=8, angle = 90),
+        axis.title.y=element_text(size=14), axis.title.x=element_text(), axis.text.y=element_text(size=14))+
+  ggtitle("DEGs - MUT vs WT MOs")
+
+#pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/DEGs_MUTvsWT_MOs.pdf")
+#print(DEGs_MUTvsWTMOs)
+ #dev.off()
+ 
+ ##35 DAYS
+
+subset_genes <- DEGS.all.MUTvsWT.35[gene_list1,]
+subset_genes <- na.omit(subset_genes)
+
+DEGs_MUTvsWTMOs <- ggplot(subset_genes, aes(y=avg_logFC, x=rownames(subset_genes, ))) + 
+    geom_bar(aes(fill = avg_logFC), stat = "identity", width = 0.5)+
+  theme(aspect.ratio = 2/1)+
+  scale_fill_distiller(palette = "Reds")+
+  theme_light()+
+  labs(y = "Average_log(FC)", x="DEG Genes")+
+   theme(axis.text.x = element_text(hjust=1, size=8, angle = 90),
+        axis.title.y=element_text(size=14), axis.title.x=element_text(), axis.text.y=element_text(size=14))+
+  ggtitle("DEGs - MUT vs WT MOs - 35D")
+DEGs_MUTvsWTMOs
+
+#pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/DEGs_MUTvsWT_MOs_35.pdf")
+#print(DEGs_MUTvsWTMOs)
+ #dev.off()
+
+ ##70 DAYS
+ 
+ subset_genes <- DEGS.all.MUTvsWT.70[gene_list1,]
+subset_genes <- na.omit(subset_genes)
+
+DEGs_MUTvsWTMOs <- ggplot(subset_genes, aes(y=avg_logFC, x=rownames(subset_genes, ))) + 
+    geom_bar(aes(fill = avg_logFC), stat = "identity", width = 0.5)+
+  theme(aspect.ratio = 2/1)+
+  scale_fill_distiller(palette = "Greens")+
+  theme_light()+
+  labs(y = "Average_log(FC)", x="DEG Genes")+
+   theme(axis.text.x = element_text(hjust=1, size=8, angle = 90),
+        axis.title.y=element_text(size=14), axis.title.x=element_text(), axis.text.y=element_text(size=14))+
+  ggtitle("DEGs - MUT vs WT MOs - 70D")
+DEGs_MUTvsWTMOs
+
+#pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/DEGs_MUTvsWT_MOs_70.pdf")
+#print(DEGs_MUTvsWTMOs)
+ #dev.off()
+```
+
+
+##Create a dataframe with the list of genes
+```{r}
+library(gdata)
+subset_genes1 <- DEGS.all.MUTvsWT.35s[gene_list1,]
+subset_genes1 <- na.omit(subset_genes1)
+subset_genes2 <- DEGS.all.MUTvsWT.70s[gene_list1,]
+subset_genes2 <- na.omit(subset_genes2)
+
+df <- as.data.frame(subset_genes1)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(subset_genes1)
+D35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(D35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+write.csv(D35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FC_graphs/20210129_DEGs_list_35s.csv")
+
+df <- as.data.frame(subset_genes2)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(subset_genes2)
+D70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(D70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+write.csv(D70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FC_graphs/20210129_DEGs_list_70s.csv")
+
+Joined_data <- combine(D35, D70)
+write.csv(Joined_data, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FC_graphs/20210129_DEGs_list_70-35_2.csv")
+
+
+
+```
+
+
+
+##Heatmaps for DEGs CELL IDs
+
+```{r}
+#add Column combined cluster and organoids
+#memory.limit(size=32000)
+
+Idents(combined.all) = combined.all$Models
+MOs <- subset(combined.all, idents = c("OrgMUT35", "OrgWT35", "OrgMUT70", "OrgWT70"))
+
+Idents(combined.all) = combined.all$Age
+MOs_35 <- subset(combined.all, idents = "35")
+MOs_70 <- subset(combined.all, idents = "70")
+
+                 
+Idents(MOs) = MOs$CELLID_Models
+Idents(MOs_35) = MOs_35$CELLID_Models
+Idents(MOs_70) = MOs_70$CELLID_Models
+
+signif1 <- filter(DEGS.all.MUTvsWT.35, p_val_adj < 0.05)
+signif2 <- filter(DEGS.all.MUTvsWT.70, p_val_adj < 0.05)
+signif3 <- filter(DEGS.all.MUTvsWT, p_val_adj < 0.05)
+
+#top_n function takes the top n rows with the highest wt value, or the lowest (-) wt value (https://dplyr.tidyverse.org/reference/top_n.html). In this case I selected the genes with the lowest p_val_adj
+
+top100a <- signif1  %>% top_n(n = 100, wt = -p_val_adj)
+top100b <- signif2  %>% top_n(n = 100, wt = -p_val_adj)
+top100c <- signif3  %>% top_n(n = 100, wt = -p_val_adj)
+
+DEGs_top100 <- subset(MOs_35, features = rownames(top100a))
+DEGs_top100_expr <- AverageExpression(DEGs_top100)$RNA
+
+
+a=as.matrix(DEGs_top100_expr)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+NormalisedData_Zscorea <- t(apply(as.matrix(DEGs_top100_expr),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, fontsize_row = 8, cellwidth = 60, cellheight = 9, main='Expression of Top100 DEG', filename= "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210125_heatmap_DEGs_MUTvsWT_35_clusters.pdf")
+
+
+DEGs_top100 <- subset(MOs_70, features = rownames(top100b))
+DEGs_top100_expr <- AverageExpression(DEGs_top100)$RNA
+
+
+a=as.matrix(DEGs_top100_expr)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+NormalisedData_Zscorea <- t(apply(as.matrix(DEGs_top100_expr),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, fontsize_row = 8, cellwidth = 60, cellheight = 9, main='Expression of Top100 DEG', filename= "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210125_heatmap_DEGs_MUTvsWT_70_clusters.pdf")
+
+
+DEGs_top100 <- subset(MOs, features = rownames(top100c))
+DEGs_top100_expr <- AverageExpression(DEGs_top100)$RNA
+
+
+a=as.matrix(DEGs_top100_expr)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+NormalisedData_Zscorea <- t(apply(as.matrix(DEGs_top100_expr),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, fontsize_row = 8, cellwidth = 60, cellheight = 9, main='Expression of Top100 DEG', filename= "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210125_heatmap_DEGs_MUTvsWT_clusters.pdf")
+```
+```{r}
+memory.limit(size=32000)
+signif <- filter(DEGS.all.MUTvsWT, p_val_adj < 0.05)
+
+#top_n function takes the top n rows with the highest wt value, or the lowest (-) wt value (https://dplyr.tidyverse.org/reference/top_n.html). In this case I selected the genes with the lowest p_val_adj
+
+top100 <- signif  %>% top_n(n = 100, wt = -p_val_adj)
+#top100b <- signif  %>% top_n(n = 100, wt = p_val_adj)
+
+DEGs_top100 <- subset(combined.all, features = top100$rownames)
+DEGs_top100_expr <- AverageExpression(DEGs_top100)$RNA
+
+
+a=as.matrix(DEGs_top100_expr)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+NormalisedData_Zscorea <- t(apply(as.matrix(DEGs_top100_expr),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, fontsize_row = 8, cellwidth = 60, cellheight = 9, main='Expression of Top100 DEGs MUT vs WT', filename= "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_heatmap_top100_MUTvsWT.pdf")
+
+```
+
+##Heatmaps Genotype
+```{r}
+Idents(combined.all) = combined.all$GENOTYPE
+MOs <- subset(combined.all, idents = c("MUT", "WT"))
+
+signif <- filter(DEGS.all.MUTvsWT, p_val_adj < 0.05)
+
+top100 <- signif  %>% top_n(n = 100, wt = -p_val_adj)
+
+DEGs_top100 <- subset(MOs, features = rownames(top100))
+DEGs_top100_expr <- AverageExpression(DEGs_top100)$RNA
+
+
+a=as.matrix(DEGs_top100_expr)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+NormalisedData_Zscorea <- t(apply(as.matrix(DEGs_top100_expr),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, fontsize_row = 8, cellwidth = 60, cellheight = 9, main='Expression of Top100 DEG', filename= "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210125_heatmap_DEGs_MUTvsWT.pdf")
+
+```
+
+##Heatmaps Organoids time points 
+
+```{r}
+
+Idents(combined.all) = combined.all$Models
+MOs <- subset(combined.all, idents = c("OrgMUT35", "OrgWT35", "OrgMUT70", "OrgWT70"))
+
+df <- as.data.frame(DEGS.all.MUTvsWT.35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(DEGS.all.MUTvsWT.35)
+degs_MUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(degs_MUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+ df <- as.data.frame(DEGS.all.MUTvsWT.70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(DEGS.all.MUTvsWT.70)
+degs_MUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(degs_MUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+Joined <- rbind(degs_MUTvsWT_70, degs_MUTvsWT_35)
+
+signif1 <- filter(Joined, pvalue_adj < 0.05)
+
+top100 <- signif1  %>% top_n(n = 100, wt = -pvalue_adj)
+
+DEGs_top100 <- subset(MOs, features = top100$genes)
+DEGs_top100_expr <- AverageExpression(DEGs_top100)$RNA
+
+
+a=as.matrix(DEGs_top100_expr)
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+
+NormalisedData_Zscorea <- t(apply(as.matrix(DEGs_top100_expr),1,Z_Normalize))
+
+
+#pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+#  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, cellwidth = 60, cellheight = 7.5, main='Expression of Top100 DEG', filename= "heatmapNOvsMGLCLUSTERS.pdf")
+
+
+is.na(NormalisedData_Zscorea) %>% table()
+NormalisedData_Zscorea<- na.omit(NormalisedData_Zscorea)
+is.na(NormalisedData_Zscorea) %>% table()
+
+pheatmap(NormalisedData_Zscorea, colorRampPalette(rev(brewer.pal(n = 5, name =
+  "RdYlBu")))(100), show_rownames = T, angle_col = 45,  fontsize_col = 14, fontsize_row = 8, cellwidth = 60, cellheight = 9, main='Expression of Top100 DEG', filename= "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210126_heatmap_DEGs_MUTvsWT_35and70.pdf")
+
+```
+```{r}
+Markers_MOs <-  FindAllMarkers(MOs, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+```
+
+
+##Volcano plots
+
+```{r}
+
+##creating a Volcano plot
+
+df <- as.data.frame(DEGS.all.MUTvsWT.35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(DEGS.all.MUTvsWT.35)
+dataVolc_MUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_MUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+DEGsMOs_MUTvsMOs_WT35_volc <-  EnhancedVolcano(dataVolc_MUTvsWT_35,
+    lab = dataVolc_MUTvsWT_35$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 35 days',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/DEGsMOs_MUTvsMOs_WT35_volc.pdf")
+ print(DEGsMOs_MUTvsMOs_WT35_volc)
+ 
+ dev.off()
+ 
+##70 days
+ 
+ df <- as.data.frame(DEGS.all.MUTvsWT.70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(DEGS.all.MUTvsWT.70)
+dataVolc_MUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_MUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+DEGsMOs_MUTvsMOs_WT70_volc <-  EnhancedVolcano(dataVolc_MUTvsWT_70,
+    lab = dataVolc_MUTvsWT_70$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 70 days',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+   legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right")
+    #labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/DEGsMOs_MUTvsMOs_WT70_volc.pdf")
+ print(DEGsMOs_MUTvsMOs_WT70_volc) 
+ dev.off()
+```
+
+##Volcano plots for cell types 35 and 70 days organoids
+
+
+```{r}
+
+##In vitro 35
+
+df <- as.data.frame(OrgClMUTvsWT_35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(OrgClMUTvsWT_35)
+dataVolc_OrgClMUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_OrgClMUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+OrgClMUTvsWT_35_volc <-  EnhancedVolcano(dataVolc_OrgClMUTvsWT_35,
+    lab = dataVolc_OrgClMUTvsWT_35$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 35 days - Nb in vitro',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/OrgClMUTvsWT_35_volc.pdf")
+ print(OrgClMUTvsWT_35_volc)
+ 
+ dev.off()
+ 
+ ##In vitro 70
+
+df <- as.data.frame(OrgClMUTvsWT_70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(OrgClMUTvsWT_70)
+dataVolc_OrgClMUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_OrgClMUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+OrgClMUTvsWT_35_volc <-  EnhancedVolcano(dataVolc_OrgClMUTvsWT_70,
+    lab = dataVolc_OrgClMUTvsWT_70$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 70 days -  Nb in vitro',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/OrgClMUTvsWT_70_volc.pdf")
+ print(OrgClMUTvsWT_35_volc)
+ 
+ dev.off()
+ 
+ 
+ ##Glia 35
+ 
+ df <- as.data.frame(GliaClMUTvsWT_35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(GliaClMUTvsWT_35)
+dataVolc_GliaClMUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_GliaClMUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+GliaClMUTvsWT_35_volc <-  EnhancedVolcano(dataVolc_GliaClMUTvsWT_35,
+    lab = dataVolc_GliaClMUTvsWT_35$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 35 days - Glia',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/GliaClMUTvsWT_35_volc.pdf")
+ print(GliaClMUTvsWT_35_volc)
+ 
+ dev.off()
+ 
+ ##Glia 70
+ 
+ df <- as.data.frame(GliaClMUTvsWT_70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(GliaClMUTvsWT_70)
+dataVolc_GliaClMUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_GliaClMUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+GliaClMUTvsWT_70_volc <-  EnhancedVolcano(dataVolc_GliaClMUTvsWT_70,
+    lab = dataVolc_GliaClMUTvsWT_70$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 70 days - Glia',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/GliaClMUTvsWT_70_volc.pdf")
+ print(GliaClMUTvsWT_70_volc)
+ 
+ dev.off()
+ 
+  ##matureDN 35
+ 
+ df <- as.data.frame(matureDNMUTvsWT_35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(matureDNMUTvsWT_35)
+dataVolc_matureDNMUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_matureDNMUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+matureDNMUTvsWT_35_volc <-  EnhancedVolcano(dataVolc_matureDNMUTvsWT_35,
+    lab = dataVolc_matureDNMUTvsWT_35$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 35 days - matureDN',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/matureDNMUTvsWT_35_volc.pdf")
+ print(matureDNMUTvsWT_35_volc)
+ 
+ dev.off()
+ 
+   ##matureDN 70
+ 
+ df <- as.data.frame(matureDNMUTvsWT_70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(matureDNMUTvsWT_70)
+dataVolc_matureDNMUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_matureDNMUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+matureDNMUTvsWT_70_volc <-  EnhancedVolcano(dataVolc_matureDNMUTvsWT_70,
+    lab = dataVolc_matureDNMUTvsWT_70$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 70 days - matureDN',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/matureDNMUTvsWT_70_volc.pdf")
+ print(matureDNMUTvsWT_70_volc)
+ 
+ dev.off()
+ 
+   ##Young Neurons 35
+ 
+ df <- as.data.frame(YNeuMUTvsWT_35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(YNeuMUTvsWT_35)
+dataVolc_YNeuMUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_YNeuMUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+YNeuMUTvsWT_35_volc <-  EnhancedVolcano(dataVolc_YNeuMUTvsWT_35,
+    lab = dataVolc_YNeuMUTvsWT_35$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 35 days - Young Neurons',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210126_YNeuMUTvsWT_35_volc.pdf")
+ print(YNeuMUTvsWT_35_volc)
+ 
+ dev.off()
+ 
+  
+   ##Young Neurons 70
+ 
+ df <- as.data.frame(YNeuMUTvsWT_70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(YNeuMUTvsWT_70)
+dataVolc_YNeuMUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_YNeuMUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+YNeuMUTvsWT_70_volc <-  EnhancedVolcano(dataVolc_YNeuMUTvsWT_70,
+    lab = dataVolc_YNeuMUTvsWT_70$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 70 days - Young Neurons',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210126_YNeuMUTvsWT_70_volc.pdf")
+ print(YNeuMUTvsWT_70_volc)
+ 
+ dev.off()
+ 
+ 
+   
+   ##Non DN neurons 35
+ 
+ df <- as.data.frame(NonDNMUTvsWT_35)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(NonDNMUTvsWT_35)
+dataVolc_NonDNMUTvsWT_35 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_NonDNMUTvsWT_35) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+NonDNMUTvsWT_35_volc <-  EnhancedVolcano(dataVolc_NonDNMUTvsWT_35,
+    lab = dataVolc_NonDNMUTvsWT_35$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 35 days -Non DN neurons',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210126_NonDNMUTvsWT_35_volc.pdf")
+ print(NonDNMUTvsWT_35_volc)
+ 
+ dev.off()
+ 
+    
+   ##Non DN neurons 70
+ 
+ df <- as.data.frame(NonDNMUTvsWT_70)
+df1<-as.data.frame(df$avg_logFC)
+df2 <- as.data.frame(df$p_val_adj)
+df3<-as.data.frame(df$p_val)
+
+
+genes <- rownames(NonDNMUTvsWT_70)
+dataVolc_NonDNMUTvsWT_70 <- cbind.data.frame(genes,df1,df2,df3)
+colnames(dataVolc_NonDNMUTvsWT_70) <- c("genes","log2FoldChange", "pvalue_adj", "pvalue")
+
+
+NonDNMUTvsWT_70_volc <-  EnhancedVolcano(dataVolc_NonDNMUTvsWT_70,
+    lab = dataVolc_NonDNMUTvsWT_70$genes,
+    x = 'log2FoldChange',
+    y = 'pvalue' ,
+   xlim = c(-2, 2),
+  ylim = c(0, 150),
+    title = 'DEGs MOs_MUT vs MOs_WT 70 days - Non DN neurons',
+    subtitle = NULL,
+    FCcutoff = 0.25,
+    pCutoff = 0.05,
+    pointSize =3, 
+   legendLabels = c("NS","Log2 FC","P < 0.05","P < 0.05 & Log2 FC > 0.25"),
+  legendLabSize = 10,
+    #drawConnectors = TRUE,
+    #widthConnectors = 0.3,
+    #lengthConnectors = unit(0.01,'npc'),
+    legendPosition = "right",
+    labSize = 3)
+ pdf("Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210126_NonDNMUTvsWT_70_volc.pdf")
+ print(NonDNMUTvsWT_70_volc)
+ 
+ dev.off()
+ 
+ 
+ 
+ 
+```
+
+##Top 100 marker genes that used in network
+
+```{r}
+Idents(combined.all) <- combined.all$seurat_clusters
+
+combined.all <-  RenameIdents(combined.all,  `0` = "Nb in vitro", `1` = "Young Neurons", `2` = "mature DN", `3` = "Non DN Neurons", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "Nb in vitro", `8`="Endothelial cells")
+Idents(combined.all)
+combined.all$CELL_ID <-Idents(combined.all)
+
+all.markers <- FindAllMarkers(combined.all, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+top100 <- all.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_logFC)
+
+write.csv(top100, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210127_Markers_top100.csv")
+```
+

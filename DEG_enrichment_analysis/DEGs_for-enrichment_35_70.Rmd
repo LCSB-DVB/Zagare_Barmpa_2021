@@ -1,0 +1,203 @@
+---
+title: "DEGs-enrichment_all4"
+author: "Kiki Barmpa"
+date: "17/12/2020"
+output: html_document
+---
+
+
+```{r}
+library(Seurat)
+library(cowplot)
+library(patchwork)
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+library(pheatmap)
+library(RColorBrewer)
+```
+
+## Load the integrated and annotated seurat object
+
+```{r}
+combined.all = readRDS("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\data_integrated_Embr_WT_MUT_all4.rds")
+
+Idents(combined.all) = combined.all$seurat_clusters
+combined.all <-  RenameIdents(combined.all,  `0` = "NBs in vitro", `1` = "young Neurons", `2` = "mature DNs", `3` = "Non DNs ", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "NBs in vitro", `8`="Endothelial cells")
+
+DimPlot(combined.all, reduction = "umap", label = TRUE)
+```
+
+
+
+##Find differentially expressed genes
+
+```{r}
+Idents(combined.all) = combined.all$Models
+
+DEGS.all.MUTvsWT.35 <- FindMarkers(combined.all, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", only.pos = F)
+write.csv(DEGS.all.MUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_DEGsall_MUTvsWT_35.csv")
+
+DEGS.all.MUTvsWT.70 <- FindMarkers(combined.all, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", only.pos = F)
+write.csv(DEGS.all.MUTvsWT.70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_DEGsall_MUTvsWT_70.csv")
+
+DEGS.all.MUT.70vs35 <- FindMarkers(combined.all, ident.1 = "OrgMUT70", ident.2 = "OrgMUT35", only.pos = F)  ##error
+write.csv(DEGS.all.MUT.70vs35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_DEGsall_MUT_70vs35.csv") 
+
+```
+
+##Combine in vitro clusters
+
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+OrgCl <- subset(combined.all, idents = c("0","7"))
+Idents(OrgCl) = OrgCl$Models
+
+OrgClMUTvsWT_35 <- FindMarkers(OrgCl, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", logfc.threshold = 0.25, only.pos = F)
+write.csv(OrgClMUTvsWT_35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_cLinvitro_MUTvsWT_35.csv")
+
+OrgClMUTvsWT_70 <- FindMarkers(OrgCl, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", logfc.threshold = 0.25, only.pos = F)
+write.csv(OrgClMUTvsWT_70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_cLinvitro_MUTvsWT_70.csv")
+
+```
+
+##DEGs GLIA
+
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+GliaCl <- subset(combined.all, idents = c("4"))
+Idents(GliaCl) = GliaCl$Models
+
+GliaClMUTvsWT_35 <- FindMarkers(GliaCl, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", logfc.threshold = 0.25, only.pos = F)
+write.csv(GliaClMUTvsWT_35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_Glia_MUTvsWT_35.csv")
+GliaClMUTvsWT_70 <- FindMarkers(GliaCl, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", logfc.threshold = 0.25, only.pos = F)
+write.csv(GliaClMUTvsWT_70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_Glia_MUTvsWT_70.csv")
+
+
+
+```
+
+##DEGs for mature DN
+
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+matureDN <- subset(combined.all, idents = c("2"))
+Idents(matureDN) = matureDN$Models
+
+matureDNMUTvsWT_35 <- FindMarkers(matureDN, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", logfc.threshold = 0.25, only.pos = F)
+write.csv(matureDNMUTvsWT_35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_matureDN_MUTvsWT_35.csv")
+
+matureDNMUTvsWT_70 <- FindMarkers(matureDN, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", logfc.threshold = 0.25, only.pos = F)
+write.csv(matureDNMUTvsWT_70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_matureDN_MUTvsWT_70.csv")
+
+
+```
+
+##DEGs for progenitors
+
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+Progenitors <- subset(combined.all, idents = c("5"))
+Idents(Progenitors) = Progenitors$Models
+
+ProgenitorsMUTvsWT_35 <- FindMarkers(Progenitors, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", logfc.threshold = 0.25, only.pos = F)
+write.csv(ProgenitorsMUTvsWT_35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_Progenitors_MUTvsWT_35.csv")
+
+ProgenitorsMUTvsWT_70 <- FindMarkers(Progenitors, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", logfc.threshold = 0.25, only.pos = F)
+write.csv(ProgenitorsMUTvsWT_70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_Progenitors_MUTvsWT_70.csv")
+
+##not enough cells to run the differential expression
+```
+##DEG Young Neurons
+
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+YNeu <- subset(combined.all, idents = c("1"))
+Idents(YNeu) = YNeu$Models
+
+YNeuMUTvsWT_35 <- FindMarkers(YNeu, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", logfc.threshold = 0.25, only.pos = F)
+write.csv(YNeuMUTvsWT_35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_YNeu_MUTvsWT_35.csv")
+
+YNeuMUTvsWT_70 <- FindMarkers(YNeu, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", logfc.threshold = 0.25, only.pos = F)
+write.csv(YNeuMUTvsWT_70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_YNeu_MUTvsWT_70.csv")
+```
+
+##DEGs non DN neurons
+
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+NonDN <- subset(combined.all, idents = c("3"))
+Idents(NonDN) = NonDN$Models
+
+NonDNMUTvsWT_35 <- FindMarkers(NonDN, ident.1 = "OrgMUT35", ident.2 = "OrgWT35", logfc.threshold = 0.25, only.pos = F)
+write.csv(NonDNMUTvsWT_35, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_NonDN_MUTvsWT_35.csv")
+
+NonDNMUTvsWT_70 <- FindMarkers(NonDN, ident.1 = "OrgMUT70", ident.2 = "OrgWT70", logfc.threshold = 0.25, only.pos = F)
+write.csv(NonDNMUTvsWT_70, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_NonDN_MUTvsWT_70.csv")
+```
+
+##Comparisons of the MUTvsWT in all timepoints
+```{r}
+memory.limit(size=32000)
+
+
+Idents(combined.all) = combined.all$GENOTYPE
+DEGS.all.MUTvsWT <- FindMarkers(combined.all, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(DEGS.all.MUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/20210122_DEGS.all.MUTvsWT.csv")
+
+##in vitro clusters
+Idents(combined.all) = combined.all$seurat_clusters
+OrgCl <- subset(combined.all, idents = c("0","7"))
+Idents(OrgCl) = OrgCl$GENOTYPE
+
+OrgClMUTvsWT <- FindMarkers(OrgCl, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(OrgClMUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FindMarkers/20210122_cLinvitro_MUTvsWT.csv")
+
+
+##DEGs GLIA
+
+GliaCl <- subset(combined.all, idents = c("4"))
+Idents(GliaCl) = GliaCl$GENOTYPE
+
+GliaClMUTvsWT <- FindMarkers(GliaCl, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(GliaClMUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FindMarkers/20210122_Glia_MUTvsWT.csv")
+
+
+##DEGs for mature DN
+Idents(combined.all) = combined.all$seurat_clusters
+matureDN <- subset(combined.all, idents = c("2"))
+Idents(matureDN) = matureDN$GENOTYPE
+
+matureDNMUTvsWT <- FindMarkers(matureDN, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(matureDNMUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FindMarkers/20210122_matureDN_MUTvsWT.csv")
+
+##DEGs for progenitors
+Idents(combined.all) = combined.all$seurat_clusters
+Progenitors <- subset(combined.all, idents = c("5"))
+Idents(Progenitors) = Progenitors$GENOTYPE
+
+ProgenitorsMUTvsWT <- FindMarkers(Progenitors, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(ProgenitorsMUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FindMarkers/20210122_Progenitors_MUTvsWT.csv")
+
+##DEG Young Neurons
+Idents(combined.all) = combined.all$seurat_clusters
+YNeu <- subset(combined.all, idents = c("1"))
+Idents(YNeu) = YNeu$GENOTYPE
+
+YNeuMUTvsWT <- FindMarkers(YNeu, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(YNeuMUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FindMarkers/20210122_YNeu_MUTvsWT.csv")
+
+##DEGs non DN neurons
+Idents(combined.all) = combined.all$seurat_clusters
+NonDN <- subset(combined.all, idents = c("3"))
+Idents(NonDN) = NonDN$GENOTYPE
+
+NonDNMUTvsWT <- FindMarkers(NonDN, ident.1 = "MUT", ident.2 = "WT", only.pos = F)
+write.csv(NonDNMUTvsWT, file = "Z:/09-Sharing of Data/scRNA-Seq from Sarah/FINAL SCRIPTS/Partials/DEG_all4/Final_annotation/FindMarkers/20210122_NonDN_MUTvsWT.csv")
+
+```
+
+
+
+
+

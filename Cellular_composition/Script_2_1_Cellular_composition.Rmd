@@ -1,0 +1,541 @@
+---
+title: "Cell_type_differences"
+output: html_document
+---
+
+```{r}
+library(Seurat)
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+combined.all = readRDS("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\data_integrated_Embr_WT_MUT_all4.rds")
+```
+```{r}
+Idents(combined.all) = combined.all$seurat_clusters
+combined.all <-  RenameIdents(combined.all,  `0` = "NBs in vitro", `1` = "young Neurons", `2` = "mature DNs", `3` = "Non DNs ", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "NBs in vitro", `8`="Endothelial cells")
+
+DimPlot(combined.all, reduction = "umap", label = TRUE)
+p <- DimPlot(combined.all, reduction = "umap", split.by="Models",label =TRUE, pt.size = 1.5)
+p
+```
+
+
+```{r}
+Idents(combined.all) <- "seurat_clusters"
+modelsTP<-subset(combined.all, idents  = "5")
+
+Idents(modelsTP) <- "Age"
+table(Idents(modelsTP))
+
+cluster.averages <- AverageExpression(modelsTP)
+head(cluster.averages[["RNA"]][, 1:5])
+
+orig.levels <- levels(modelsTP)
+Idents(modelsTP) <- gsub(pattern = " ", replacement = "_", x = Idents(modelsTP))
+orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+levels(modelsTP) <- orig.levels
+cluster.averages <- AverageExpression(modelsTP, return.seurat = TRUE)
+cluster.averages
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_WT35", highlight = "w9")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_WT35")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_WT35")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_WT35")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_WT35")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_WT35")
+figure1<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_MUT35")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_MUT35")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_MUT35")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_MUT35")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_MUT35")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_MUT35")
+figure2<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_WT70")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_WT70")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_WT70")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_WT70")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_WT70")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_WT70")
+figure3<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_MUT70")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_MUT70")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_MUT70")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_MUT70")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_MUT70")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_MUT70")
+figure4<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+
+figure1
+figure2
+figure3
+figure4
+
+
+```
+
+```{r}
+Idents(combined.all) <- "seurat_clusters"
+modelsTP<-subset(combined.all, idents  = "4")
+
+Idents(modelsTP) <- "Age"
+table(Idents(modelsTP))
+
+cluster.averages <- AverageExpression(modelsTP)
+head(cluster.averages[["RNA"]][, 1:5])
+
+orig.levels <- levels(modelsTP)
+Idents(modelsTP) <- gsub(pattern = " ", replacement = "_", x = Idents(modelsTP))
+orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+levels(modelsTP) <- orig.levels
+cluster.averages <- AverageExpression(modelsTP, return.seurat = TRUE)
+cluster.averages
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_WT35", highlight = "w9")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_WT35")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_WT35")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_WT35")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_WT35")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_WT35")
+figure1<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_MUT35")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_MUT35")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_MUT35")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_MUT35")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_MUT35")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_MUT35")
+figure2<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_WT70")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_WT70")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_WT70")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_WT70")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_WT70")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_WT70")
+figure3<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+a<-CellScatter(cluster.averages, cell1 = "w9", cell2 = "MO_MUT70")
+b<-CellScatter(cluster.averages, cell1 = "w10", cell2 = "MO_MUT70")
+c<-CellScatter(cluster.averages, cell1 = "w11", cell2 = "MO_MUT70")
+d<-CellScatter(cluster.averages, cell1 = "w6", cell2 = "MO_MUT70")
+e<-CellScatter(cluster.averages, cell1 = "w7", cell2 = "MO_MUT70")
+f<-CellScatter(cluster.averages, cell1 = "w8", cell2 = "MO_MUT70")
+figure4<-ggarrange( d,e,f,a,b,c,
+          ncol = 3, nrow = 2)
+
+
+figure1
+figure2
+figure3
+figure4
+
+
+```
+
+```{r}
+DefaultAssay(combined.all) <- "RNA"
+combined.all <- NormalizeData(combined.all, normalization.method = "LogNormalize", scale.factor = 10000)
+all.genes <- rownames(combined.all)
+combined.all <- ScaleData(combined.all, features = all.genes)
+
+Idents(combined.all) <- "seurat_clusters"
+modelsTP<-subset(combined.all, idents = c("6"))
+
+Idents(modelsTP)<-modelsTP$Models
+
+OrganoidsWT <- subset(modelsTP, idents  = c("MO_WT35", "MO_WT70", "EM"))
+OrganoidsMUT <- subset(modelsTP, idents  = c("MO_MUT35", "MO_MUT70", "EM"))
+
+DimPlot(OrganoidsWT, reduction = "umap", group.by = "Models")
+DimPlot(OrganoidsMUT, reduction = "umap", group.by = "Models")
+
+FeaturePlot(OrganoidsWT ,features = c("CLDN5","MCAM"),cols = c("yellow", "red"))+RestoreLegend(position = "right")
+FeaturePlot(combined.all,features = c("CLDN5","MCAM"),cols = c("yellow", "red"))+RestoreLegend(position = "right")
+FeaturePlot(OrganoidsWT ,features = c("MCAM","SPARC"),split.by = "Models",  cols = c("yellow","red"))+ RestoreLegend(position = "right")
+FeaturePlot(OrganoidsMUT ,features = c("MCAM","SPARC"),split.by = "Models",  cols = c("yellow", "red")) + RestoreLegend(position = "right")
+
+
+```
+
+------------------------------------------------------------------------------------------------------
+```{r}
+Idents(combined.all) <- "seurat_clusters"
+modelsTP<-subset(combined.all, idents = "5")
+
+Idents(modelsTP)<-modelsTP$Models
+
+OrganoidsWT <- subset(modelsTP, idents  = c("MO_WT35", "MO_WT70", "EM"))
+OrganoidsMUT <- subset(modelsTP, idents  = c("MO_MUT35", "MO_MUT70", "EM"))
+
+DimPlot(OrganoidsWT, reduction = "umap", group.by = "Models")
+DimPlot(OrganoidsMUT, reduction = "umap", group.by = "Models")
+
+FeaturePlot(OrganoidsWT ,features = c("IGFBP5","CENPF"),split.by = "Models",  cols = c("yellow", "red")) + RestoreLegend(position = "right")
+
+FeaturePlot(OrganoidsMUT ,features = c("IGFBP5","CENPF"),split.by = "Models",  cols = c("yellow", "red")) + RestoreLegend(position = "right")
+
+```
+
+
+#Separation and glia markers
+
+```{r}
+Idents(combined.all) <- "seurat_clusters"
+modelsTP<-subset(combined.all, idents = "4")
+
+Idents(modelsTP)<-modelsTP$Models
+
+OrganoidsWT <- subset(modelsTP, idents  = c("MO_WT35", "MO_WT70", "EM"))
+OrganoidsMUT <- subset(modelsTP, idents  = c("MO_MUT35", "MO_MUT70", "EM"))
+
+DimPlot(OrganoidsWT, reduction = "umap", group.by = "Models")
+DimPlot(OrganoidsMUT, reduction = "umap", group.by = "Models")
+
+p1<-FeaturePlot(modelsTP ,features = "VIM",split.by = "Models",  cols = c("yellow", "red")) + RestoreLegend(position = "right")
+
+pdf("Glia_vimentin_WT.pdf")
+print(p1)
+dev.off()
+
+FeaturePlot(OrganoidsMUT ,features = "VIM",split.by = "Models",  cols = c("yellow", "red")) + RestoreLegend(position = "right")
+
+FeaturePlot(OrganoidsWT ,features = "VIM", split.by = "Models",  cols = c("yellow", "red")) + RestoreLegend(position = "right")
+
+
+#pdf("Glia_vimentin_MUT.pdf")
+#print(p1)
+#dev.off()
+
+```
+
+
+```{r}
+Idents(combined.all) <- combined.all$Models
+Organoids<-subset(combined.all,idents = c("MO_WT35", "MO_WT70","MO_MUT35","MO_MUT70"))
+Idents(Organoids) = Organoids$seurat_clusters
+DNs <- subset(Organoids, idents  = "2")
+Idents(DNs) = DNs$Models
+MUT_DNs<-subset(DNs, idents = c("MO_MUT35", "MO_MUT70"))
+WT_DNs<-subset(DNs, idents = c("MO_WT35", "MO_WT70"))
+
+FeaturePlot(MUT_DNs ,features = c("CASP3"), split.by = "Age",cols = c("yellow", "red"))+RestoreLegend(position = "right")
+FeaturePlot(WT_DNs ,features = c("CASP3"), split.by = "Age",cols = c("yellow", "red"))+RestoreLegend(position = "right")
+VlnPlot(MUT_DNs, features = c("CASP3"))
+VlnPlot(WT_DNs, features = c("CASP3"))
+
+Idents(Organoids) = "Models"
+my_levels = c("MO_MUT35", "MO_MUT70","MO_WT35", "MO_WT70")
+levels(Organoids)=my_levels
+levels(Organoids)
+
+Organoids@meta.data %>%
+  mutate(Models=factor(Models, levels=my_levels)) %>%
+  mutate(expression = Organoids@assays$RNA@data['CASP3',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+             geom_boxplot(aes(fill = Models )) +
+ #facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("MO_MUT35", "MO_MUT70"),c("MO_WT35", "MO_WT70"),c("MO_WT35", "MO_MUT35"), c("MO_WT70", "MO_MUT70")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+     theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+   #scale_fill_manual(values= c( "#cccccc", "#bdd7e7")) +
+  labs(title = "TH")   
+```
+
+
+
+
+
+```{r}
+
+Idents(combined.all) = combined.all$Models
+EB <- subset(combined.all, idents  = "EM")
+Idents(EB) = EB$seurat_clusters
+
+#0 and 7 are in vitro clusters
+
+EB1<-WhichCells(EB, idents="1") #192
+EB2<-WhichCells(EB, idents="2") #472
+EB3<-WhichCells(EB, idents="3") #65
+EB4<-WhichCells(EB, idents="4") #285
+EB5<-WhichCells(EB, idents="5") #566
+EB6<-WhichCells(EB, idents="6") #176
+EB8<-WhichCells(EB, idents="8") #209
+
+cellsT=1965
+#EB0<-WhichCells(EB, idents="0")  12 cells?
+
+youngNeurons = length(EB1)/cellsT*100
+matureDN = length(EB2)/cellsT*100
+NonDNNeuron = length(EB3)/cellsT*100
+Glia = length(EB4)/cellsT*100
+Progenitors = length(EB5)/cellsT*100
+Pericytes = length(EB6)/cellsT*100
+Endocytes = length(EB8)/cellsT*100
+
+
+cell_count <- c(youngNeurons, matureDN, NonDNNeuron, Glia, Progenitors, Pericytes,Endocytes)
+cell_countEB<- as.matrix(cell_count)
+rownames(cell_countEB)<-c("young_Neurons", "mature_DN", "Non_DN_Neurons", "Glia", "Progenitors", "Pericytes","Endocytes")
+
+cell_countEB<-as.data.frame(cell_countEB)
+rownames_to_column(cell_countEB, "cells")->cell_countEB
+
+pie <- ggplot(cell_countEB, aes(x="", y=V1, fill=cells)) + 
+scale_fill_manual(values= c("#0073C2FF", "#EFC000FF", "#CD534CFF","#868686FF", "forestgreen","darkorange", "plum")) +
+geom_bar(stat="identity", width=1) + coord_polar("y", start=0) + geom_text(aes(label = paste0(round(V1), "%")), position = position_stack(vjust = 0.5))+
+labs(x = NULL, y = NULL, fill = NULL, title = "Embryo")+
+theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))
+  
+  
+ pie
+
+```
+
+```{r}
+
+Idents(combined.all) = combined.all$Models
+WT35 <- subset(combined.all, idents  = "MO_WT35")
+Idents(WT35) = WT35$seurat_clusters
+
+#0 and 7 are in vitro clusters
+
+WT35_0<-WhichCells(WT35, idents="0") #1680
+WT35_1<-WhichCells(WT35, idents="1") #485
+WT35_2<-WhichCells(WT35, idents="2") #343
+WT35_3<-WhichCells(WT35, idents="3") #237
+WT35_4<-WhichCells(WT35, idents="4") #12
+WT35_5<-WhichCells(WT35, idents="5") #2
+WT35_6<-WhichCells(WT35, idents="6") #15
+WT35_7<-WhichCells(WT35, idents="7") #91
+#WT35_8<-WhichCells(WT35, idents="8") #0
+
+cellsT=length(WT35_0)+length(WT35_1)+length(WT35_2)+length(WT35_3)+length(WT35_4)+length(WT35_5)+length(WT35_6)+(length(WT35_7))
+#EB0<-WhichCells(EB, idents="0")  12 cells?
+
+Nbinvitro = (length(WT35_0)/cellsT*100) + (length(WT35_7)/cellsT*100)
+youngNeurons = length(WT35_1)/cellsT*100
+matureDN = length(WT35_2)/cellsT*100
+NonDNNeuron = length(WT35_3)/cellsT*100
+Glia = length(WT35_4)/cellsT*100
+Progenitors = length(WT35_5)/cellsT*100
+Pericytes = length(WT35_6)/cellsT*100
+#Endocytes = length(WT35_8)/cellsT*100
+
+
+cell_count <- c(youngNeurons, matureDN, NonDNNeuron, Glia, Progenitors, Pericytes,Nbinvitro)
+cell_countWT35<- as.matrix(cell_count)
+rownames(cell_countWT35)<-c("young_Neurons", "mature_DN", "Non_DN_Neurons", "Glia", "Progenitors", "Pericytes","Nb_in_vitro")
+
+cell_countWT35<-as.data.frame(cell_countWT35)
+rownames_to_column(cell_countWT35, "cells")->cell_countWT35
+
+pie <- ggplot(cell_countWT35, aes(x="", y=V1, fill=cells)) + 
+scale_fill_manual(values= c("#0073C2FF", "#EFC000FF", "#CD534CFF","#868686FF", "forestgreen","darkorange", "plum3")) +
+geom_bar(stat="identity", width=1) + coord_polar("y", start=0) + geom_text(aes(label = paste0(round(V1), "%")), position = position_stack(vjust = 0.5))+
+labs(x = NULL, y = NULL, fill = NULL, title = "WT35")+
+theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))
+  
+  
+ pie
+
+```
+```{r}
+
+Idents(combined.all) = combined.all$Models
+MUT35 <- subset(combined.all, idents  = "MO_MUT35")
+Idents(MUT35) = MUT35$seurat_clusters
+
+#0 and 7 are in vitro clusters
+
+MUT35_0<-WhichCells(MUT35, idents="0") #970
+MUT35_1<-WhichCells(MUT35, idents="1") #1240
+MUT35_2<-WhichCells(MUT35, idents="2") #369
+MUT35_3<-WhichCells(MUT35, idents="3") #257
+MUT35_4<-WhichCells(MUT35, idents="4") #67
+MUT35_5<-WhichCells(MUT35, idents="5") #4
+MUT35_6<-WhichCells(MUT35, idents="6") #4
+MUT35_7<-WhichCells(MUT35, idents="7") #36
+#MUT35_8<-WhichCells(MUT35, idents="8") #0
+
+cellsT=length(MUT35_0)+length(MUT35_1)+length(MUT35_2)+length(MUT35_3)+length(MUT35_4)+length(MUT35_5)+length(MUT35_6)+(length(MUT35_7))
+#EB0<-WhichCells(EB, idents="0")  12 cells?
+
+Nbinvitro = (length(MUT35_0)/cellsT*100) + (length(MUT35_7)/cellsT*100)
+youngNeurons = length(MUT35_1)/cellsT*100
+matureDN = length(MUT35_2)/cellsT*100
+NonDNNeuron = length(MUT35_3)/cellsT*100
+Glia = length(MUT35_4)/cellsT*100
+Progenitors = length(MUT35_5)/cellsT*100
+Pericytes = length(MUT35_6)/cellsT*100
+#Endocytes = length(MUT35_8)/cellsT*100
+
+
+cell_count <- c(youngNeurons, matureDN, NonDNNeuron, Glia, Progenitors, Pericytes,Nbinvitro)
+cell_countMUT35<- as.matrix(cell_count)
+rownames(cell_countMUT35)<-c("young_Neurons", "mature_DN", "Non_DN_Neurons", "Glia", "Progenitors", "Pericytes","Nb_in_vitro")
+
+cell_countMUT35<-as.data.frame(cell_countMUT35)
+rownames_to_column(cell_countMUT35, "cells")->cell_countMUT35
+
+pie <- ggplot(cell_countMUT35, aes(x="", y=V1, fill=cells)) + 
+scale_fill_manual(values= c("#0073C2FF", "#EFC000FF", "#CD534CFF","#868686FF", "forestgreen","darkorange", "plum3")) +
+geom_bar(stat="identity", width=1) + coord_polar("y", start=0) + geom_text(aes(label = paste0(round(V1), "%")), position = position_stack(vjust = 0.5))+
+labs(x = NULL, y = NULL, fill = NULL, title = "MUT35")+
+theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))
+  
+  
+ pie
+
+```
+
+```{r}
+
+Idents(combined.all) = combined.all$Models
+WT70 <- subset(combined.all, idents  = "MO_WT70")
+Idents(WT70) = WT70$seurat_clusters
+
+#0 and 7 are in vitro clusters
+
+WT70_0<-WhichCells(WT70, idents="0") #885
+WT70_1<-WhichCells(WT70, idents="1") #246
+WT70_2<-WhichCells(WT70, idents="2") #163
+WT70_3<-WhichCells(WT70, idents="3") #107
+WT70_4<-WhichCells(WT70, idents="4") #168
+WT70_5<-WhichCells(WT70, idents="5") #47
+WT70_6<-WhichCells(WT70, idents="6") #243
+WT70_7<-WhichCells(WT70, idents="7") #134
+#WT70_8<-WhichCells(WT70, idents="8") #0
+
+cellsT=length(WT70_0)+length(WT70_1)+length(WT70_2)+length(WT70_3)+length(WT70_4)+length(WT70_5)+length(WT70_6)+(length(WT70_7))
+#EB0<-WhichCells(EB, idents="0")  12 cells?
+
+Nbinvitro = (length(WT70_0)/cellsT*100) + (length(WT70_7)/cellsT*100)
+youngNeurons = length(WT70_1)/cellsT*100
+matureDN = length(WT70_2)/cellsT*100
+NonDNNeuron = length(WT70_3)/cellsT*100
+Glia = length(WT70_4)/cellsT*100
+Progenitors = length(WT70_5)/cellsT*100
+Pericytes = length(WT70_6)/cellsT*100
+#Endocytes = length(WT70_8)/cellsT*100
+
+
+cell_count <- c(youngNeurons, matureDN, NonDNNeuron, Glia, Progenitors, Pericytes,Nbinvitro)
+cell_countWT70<- as.matrix(cell_count)
+rownames(cell_countWT70)<-c("young_Neurons", "mature_DN", "Non_DN_Neurons", "Glia", "Progenitors", "Pericytes","Nb_in_vitro")
+
+cell_countWT70<-as.data.frame(cell_countWT70)
+rownames_to_column(cell_countWT70, "cells")->cell_countWT70
+
+pie <- ggplot(cell_countWT70, aes(x="", y=V1, fill=cells)) + 
+scale_fill_manual(values= c("#0073C2FF", "#EFC000FF", "#CD534CFF","#868686FF", "forestgreen","darkorange", "plum3")) +
+geom_bar(stat="identity", width=1) + coord_polar("y", start=0) + geom_text(aes(label = paste0(round(V1), "%")), position = position_stack(vjust = 0.5))+
+labs(x = NULL, y = NULL, fill = NULL, title = "WT70")+
+theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))
+  
+  
+ pie
+
+```
+
+
+```{r}
+
+Idents(combined.all) = combined.all$Models
+MUT70 <- subset(combined.all, idents  = "MO_MUT70")
+Idents(MUT70) = MUT70$seurat_clusters
+
+#0 and 7 are in vitro clusters
+
+MUT70_0<-WhichCells(MUT70, idents="0") #1472
+MUT70_1<-WhichCells(MUT70, idents="1") #513
+MUT70_2<-WhichCells(MUT70, idents="2") #260
+MUT70_3<-WhichCells(MUT70, idents="3") #140
+MUT70_4<-WhichCells(MUT70, idents="4") #109
+MUT70_5<-WhichCells(MUT70, idents="5") #1
+MUT70_6<-WhichCells(MUT70, idents="6") #3
+MUT70_7<-WhichCells(MUT70, idents="7") #163
+#MUT70_8<-WhichCells(MUT70, idents="8") #0
+
+cellsT=length(MUT70_0)+length(MUT70_1)+length(MUT70_2)+length(MUT70_3)+length(MUT70_4)+length(MUT70_5)+length(MUT70_6)+(length(MUT70_7))
+#EB0<-WhichCells(EB, idents="0")  12 cells?
+
+Nbinvitro = (length(MUT70_0)/cellsT*100) + (length(MUT70_7)/cellsT*100)
+youngNeurons = length(MUT70_1)/cellsT*100
+matureDN = length(MUT70_2)/cellsT*100
+NonDNNeuron = length(MUT70_3)/cellsT*100
+Glia = length(MUT70_4)/cellsT*100
+Progenitors = length(MUT70_5)/cellsT*100
+Pericytes = length(MUT70_6)/cellsT*100
+#Endocytes = length(MUT70_8)/cellsT*100
+
+
+cell_count <- c(youngNeurons, matureDN, NonDNNeuron, Glia, Progenitors, Pericytes,Nbinvitro)
+cell_countMUT70<- as.matrix(cell_count)
+rownames(cell_countMUT70)<-c("young_Neurons", "mature_DN", "Non_DN_Neurons", "Glia", "Progenitors", "Pericytes","Nb_in_vitro")
+
+cell_countMUT70<-as.data.frame(cell_countMUT70)
+rownames_to_column(cell_countMUT70, "cells")->cell_countMUT70
+
+pie <- ggplot(cell_countMUT70, aes(x="", y=V1, fill=cells)) + 
+scale_fill_manual(values= c("#0073C2FF", "#EFC000FF", "#CD534CFF","#868686FF", "forestgreen","darkorange", "plum3")) +
+geom_bar(stat="identity", width=1) + coord_polar("y", start=0) + geom_text(aes(label = paste0(round(V1), "%")), position = position_stack(vjust = 0.5))+
+labs(x = NULL, y = NULL, fill = NULL, title = "MUT70")+
+theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))
+  
+  
+ pie
+
+```
+```{r}
+Idents(combined.all) = combined.all$Models
+Progen <- subset(combined.all, idents  = c("MO_WT35","MO_WT70","MO_MUT35","MO_MUT70"))
+Idents(Progen) = Progen$seurat_clusters
+Progen <- subset(Progen, idents  = "5")
+
+
+length(rownames(Progen))
+```
+
+```{r}
+genesP <- FindVariableFeatures(Progen, selection.method = "vst", nfeatures = 2000)
+top100 <- head(VariableFeatures(genesP), 100)
+genesPP <- subset(Progen, features = top100)
+genesPPP <- AverageExpression(genesPP)$RNA
+genesPPP<-rownames_to_column(genesPPP, "genes")
+colnames(genesPPP)<-c("genes", "Av.expr")
+genesPPP<-genesPPP[order(-genesPPP$Av.expr),]
+```
+
+
+```{r}
+sessionInfo()

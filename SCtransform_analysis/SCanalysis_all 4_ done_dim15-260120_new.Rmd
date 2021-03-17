@@ -1,0 +1,594 @@
+---
+title: "pseudotime analysis"
+output: trajectories
+---
+
+
+Constructing single-cell trajectories
+Arder cells in pseudotime along a trajectory - 150 dimensions
+
+subset combined all
+```{r}
+combined.all <- AddMetaData(object = combined.all, metadata = groups, col.name = "Model")
+
+combined.all$Model[1:1977] <- "Embryo"
+combined.all$Model[1978:12456] <- "ORG"
+
+    
+head(combined.all@meta.data, 100)
+Ident_ORG<- subset(combined.all)
+Idents(Ident_ORG)   = "Model"
+head(Ident_ORG@meta.data, 100)
+Ident_ORGA<- subset(Ident_ORG, idents= "ORG")
+levels(Ident_ORGA)
+head(Ident_ORGA@meta.data, 100)
+
+```
+
+#redo anlysis
+```{r}
+library(monocle3)
+library(ggplot2)
+library(dplyr)
+
+my.counts = Ident_ORGA@assays$RNA@counts
+my.counts= as.matrix(my.counts)
+
+cell_meta = data.frame("Cell" = colnames(my.counts))
+rownames(cell_meta) = colnames(my.counts)
+
+gene_meta = data.frame("gene_short_name" = rownames(my.counts))
+rownames(gene_meta) = rownames(my.counts)
+
+B = new_cell_data_set(my.counts, cell_metadata = cell_meta, gene_metadata = gene_meta)
+
+```
+
+```{r}
+
+# cell name indexes to import to Monocle
+i=grep("Glia", Ident_ORGA$CELL_ID)
+j=grep("Progenitors", Ident_ORGA$CELL_ID)
+k=grep("Nb in vitro", Ident_ORGA$CELL_ID)
+l=grep("mature DN", Ident_ORGA$CELL_ID)
+m=grep("young Neurons", Ident_ORGA$CELL_ID)
+n=grep("Pericytes", Ident_ORGA$CELL_ID)
+o=grep("Endothelial cells", Ident_ORGA$CELL_ID)
+p=grep("Non DN Neurons", Ident_ORGA$CELL_ID)
+
+
+
+```
+
+preprocessing do 150 to g
+```{r}
+B <- preprocess_cds(B, num_dim = 150)
+plot_pc_variance_explained(B)
+
+```
+
+
+Reduce dimensionality and visualize the results
+```{r}
+
+B <- reduce_dimension(B)
+plot_cells(B, label_groups_by_cluster=FALSE)
+
+```
+
+
+cluster cells
+```{r}
+B <- cluster_cells(B)
+plot_cells(B, color_cells_by = "cluster")
+```
+
+Find marker expression for each cluster
+```{r}
+
+#Find To markers, add group_cells_by="partition"
+
+marker_test_res1 <- top_markers(B, 
+                               reference_cells=1000, cores=8)
+
+write.csv(marker_test_res1, file = "TopMarkersNEWMonocleA150_4only.csv")
+
+top_specific_markers100 <- marker_test_res1 %>%
+                            filter(fraction_expressing >= 0.10) %>%
+                            group_by(cell_group) %>%
+                            top_n(5, pseudo_R2)
+
+top_specific_marker_ids100 <- unique(top_specific_markers100 %>% pull(gene_id))
+
+
+plot_genes_by_group(B,
+                    top_specific_marker_ids100,
+                    #group_cells_by="partition",
+                    ordering_type="maximal_on_diag",
+                    max.size=3)
+
+
+colData(B)$assigned_cell_type <- as.character(clusters(B))
+
+colData(B)
+
+colData(B)$assigned_cell_type = dplyr::recode(colData(B)$assigned_cell_type,
+                                                "1"="a",
+                                                "2"="b",
+                                                "3"="c",
+                                                "4"="d",
+                                                "5"="e",
+                                                "6"="f",
+                                                "7"="g" )
+
+plot_cells(B, color_cells_by="assigned_cell_type")
+
+
+```
+
+
+
+Arder the cells in pseudotime
+```{r}
+## Step 6: Brder cells
+
+
+colData(B)$GENOTYPE <- as.character(colnames(B))
+colData(B)$AGE <- as.character(colnames(B))
+colData(B)$MODEL <- as.character(colnames(B))
+colData(B)$CELL_ID <- as.character(colnames(B))
+
+
+B$CELL_ID[i]<-"Glia"
+B$CELL_ID[j]<-"Progenitors"
+B$CELL_ID[k]<-"Nb in vitro"
+B$CELL_ID[l]<-"mature DN"
+B$CELL_ID[m]<-"young Neurons"
+B$CELL_ID[n]<-"Pericytes"
+B$CELL_ID[o]<-"Endothelial cells"
+B$CELL_ID[p]<-"Non DN Neurons"
+
+            
+colData(B)
+
+WT70<-grep('WT_70', colnames(B))
+MUT70<-grep('MUT_70', colnames(B))
+WT35<-grep('WT_35', colnames(B))
+MUT35<-grep('MUT_35', colnames(B))
+
+
+
+B$AGE[8461:10466] <- "WT70"
+B$AGE[5800:8460] <- "MUT70"
+B$AGE[2948:5799] <- "WT35"
+B$AGE[1:2947] <- "MUT35"
+
+B$GENOTYPE[8461:10466] <- "WT"
+B$GENOTYPE[5800:8460] <- "MUT"
+B$GENOTYPE[2948:5799] <- "WT"
+B$GENOTYPE[1:2947] <- "MUT"
+
+
+B$MODEL[8461:10466] <- "WT70"
+B$MODEL[5800:8460] <- "MUT70"
+B$MODEL[2948:5799] <- "WT35"
+B$MODEL[1:2947] <- "MUT35"
+
+B$CELLID_GEN_AGE <- paste(B$CELL_ID, B$GENOTYPE, B$Age, sep = "_")
+
+
+
+```
+
+learn the trajectory graph
+```{r}
+## Step 5: Learn a graph
+B <- learn_graph(B)
+
+q=plot_cells(B,
+           color_cells_by = "CELL_ID",
+           label_groups_by_cluster=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE)
+
+q1=plot_cells(B, color_cells_by="CELL_ID", label_cell_groups=FALSE)
+
+
+
+```
+
+```{r}
+q2=plot_cells(B,
+           color_cells_by = "AGE",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=1.5)
+
+
+plot_cells(B,
+           color_cells_by = "MODEL",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=3)
+
+```
+
+
+
+```{r}
+B <- order_cells(B)
+q3=plot_cells(B,
+           color_cells_by = "pseudotime",
+           label_cell_groups=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE,
+           graph_label_size=1.5)
+
+```
+```{r}
+pdf("PT.pdf", width =10)
+print(q)
+print(q1)
+print(q2)
+print(q3)
+
+dev.off()
+```
+
+
+#1 starting from clusters monocle used for trajectories in 5 get gene trajectories
+
+```{r}
+TH=c("TH")
+B_TH <- B[rowData(B)$gene_short_name %in% TH]
+q4=plot_genes_in_pseudotime(B_TH, color_cells_by  = "MODEL")
+q5=plot_genes_in_pseudotime(B_TH, color_cells_by  = "CELL_ID")
+
+DCX=c( "DCX")
+B_DCX <- B[rowData(B)$gene_short_name %in% DCX]
+q6=plot_genes_in_pseudotime(B_DCX, color_cells_by  = "MODEL")
+q7=plot_genes_in_pseudotime(B_DCX, color_cells_by  = "CELL_ID")
+
+
+pdf("PTG.pdf", width =10)
+print(q4)
+print(q5)
+print(q6)
+print(q7)
+
+dev.off()
+```
+
+
+```{r}
+SYT=c( "SLC17A6")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q8=plot_genes_in_pseudotime(B_SYT, color_cells_by  = "MODEL")
+
+SYT=c( "EN1")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q9=plot_genes_in_pseudotime(B_SYT, color_cells_by  = "MODEL")
+
+SYT=c( "FOXA2")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q10=plot_genes_in_pseudotime(B_SYT, color_cells_by  = "MODEL")
+
+
+SYT=c( "SOX2")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q11=plot_genes_in_pseudotime(B_SYT, color_cells_by  = "MODEL")
+
+
+SYT=c( "NES")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q12=plot_genes_in_pseudotime(B_SYT, color_cells_by  = "MODEL")
+
+SYT=c( "NR4A2")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q13=plot_genes_in_pseudotime(B_SYT, color_cells_by  = "MODEL")
+
+
+pdf("PTG1.pdf", width =10)
+print(q8)
+print(q9)
+print(q10)
+print(q11)
+print(q12)
+print(q13)
+
+dev.off()
+
+
+
+SYT=c("MAP2")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q14=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+
+SYT=c("TUBB3")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q15=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("SYT1")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q16=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("KCNJ6")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q17=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+
+SYT=c("RBFOX3")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q18=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("DCC")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q19=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("ROBO1")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q20=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+pdf("PTG2.pdf", width =10)
+print(q14)
+print(q15)
+print(q16)
+print(q17)
+print(q18)
+print(q19)
+print(q20)
+
+dev.off()
+
+SYT=c("NCAM1")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q21=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("SYP")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q22=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+
+SYT=c("MKI67")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q23=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("PAX6")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q24=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("SOX1")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q25=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+SYT=c("SLC1A3")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q26=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+pdf("PTG3.pdf", width =10)
+print(q21)
+print(q22)
+print(q23)
+print(q24)
+print(q25)
+print(q26)
+
+dev.off()
+
+
+SYT=c("TUBB")
+B_SYT <- B[rowData(B)$gene_short_name %in% SYT]
+q27=plot_genes_in_pseudotime(B_SYT, color_cells_by  ="MODEL")
+
+
+pdf("PTG4.pdf", width =10)
+print(q27)
+
+
+dev.off()
+#plot_to_gtable()
+#plot_genes_violin(A_TH, group_cells_by = "AGEGENOTYPE")
+
+#plot_genes_by_group(A)
+```
+
+```{r}
+#plot_cells(cds, color_cells_by="Cell")
+plot_cells(B, genes=c("TH", "FOXA2"))
+```
+
+#DEG
+```{r}
+
+
+gene_fits <- fit_models(B, model_formula_str = "~MODEL")
+
+
+fit_coefs <- coefficient_table(gene_fits)
+
+```
+
+
+```{r}
+timeG35 <- fit_coefs %>% filter(term == "MODELWT35")
+timeG35 %>% filter(status == "OK") -> WT35
+WT35 %>% filter(q_value <= 0.001) -> WT35
+
+timeG70 <- fit_coefs %>% filter(term == "MODELWT70")
+timeG70 %>% filter(status == "OK") -> WT70
+WT70 %>% filter(q_value <= 0.001) -> WT70
+
+# timeM35 <- fit_coefs %>% filter(term == "MODELMUT35")
+# timeM35 %>% filter(status == "OK") -> MUT35
+# MUT35 %>% filter(q_value <= 0.001) -> MUT35
+# 
+# timeM70 <- fit_coefs %>% filter(term == "MODELMUT70")
+# timeM70 %>% filter(status == "OK") -> MUT70
+# MUT70 %>% filter(q_value <= 0.001) -> MUT70
+# 
+genesWT<-full_join(WT35, WT70, by="gene_short_name")
+#genesMUT<-full_join(MUT35, MUT70, by="gene_short_name")
+#genes<-full_join(genesWT, genesMUT, by="gene_short_name")
+
+genes<-genesWT$gene_short_name
+
+
+
+
+
+```
+
+```{r}
+
+Idents(combined.all) = combined.all$Models
+Org <- subset(combined.all, idents  = c("OrgWT35","OrgWT70","OrgMUT35","OrgMUT70"))
+
+TopGenes<-subset(Org, features  = genes)
+
+TopGenes <- AverageExpression(TopGenes)$RNA
+
+Z_Normalize <- function(x){return((x-mean(x))/(sd(x)))}
+NormalisedData_Zscore <- t(apply(as.matrix(TopGenes),1,Z_Normalize))
+
+library(RColorBrewer)
+library(pheatmap)
+library(viridis)
+
+pheatmap(NormalisedData_Zscore, color = inferno(10), show_rownames = F,  fontsize_col = 12,fontsize_row = 7, cellwidth = 30, cellheight = 0.3, main='',cutree_rows = 2)
+```
+
+```{r}
+Idents(combined.all) <- "Models"
+levels(combined.all)
+Organoids <- subset(combined.all, idents  = "OrgWT70")
+Idents(Organoids) <- "Models"
+levels(Organoids)
+
+TopGenes<-subset(Organoids,features  = genes)
+Idents(TopGenes) <- "Models"
+levels(TopGenes)
+
+
+data <- GetAssayData(object=TopGenes, slot="data"); # get the normalized data
+#log2data = log2(data.cnv+1); # add 1 then take log2
+expr_raw70 <- as.data.frame(as.matrix(data)); # convert it to a data frame
+
+#Genes that are not expressed in more than half of the cells are filtered out.
+expr70 = expr_raw70[apply(expr_raw70, 1, function(x) sum(x > 0)/length(x) > 0.5), , drop = FALSE]
+
+
+############################################################################################################
+
+Idents(combined.all) <- "Models"
+levels(combined.all)
+Organoids <- subset(combined.all, idents  = "OrgWT35")
+Idents(Organoids) <- "Models"
+levels(Organoids)
+
+TopGenes<-subset(Organoids,features  = genes)
+Idents(TopGenes) <- "Models"
+levels(TopGenes)
+
+#DoHeatmap(Organoids,features  = genes, group.by = "Age")
+
+
+
+data <- GetAssayData(object=TopGenes, slot="data"); # get the normalized data
+#log2data = log2(data.cnv+1); # add 1 then take log2
+expr_raw35 <- as.data.frame(as.matrix(data)); # convert it to a data frame
+
+
+expr35 = expr_raw35[apply(expr_raw35, 1, function(x) sum(x > 0)/length(x) > 0.5), , drop = FALSE]
+
+
+###########################################################################################################
+
+expr35<-as.data.frame(expr35)
+rownames_to_column(unique(expr35), "cells")->expr35
+# 
+expr70<-as.data.frame(expr70)
+rownames_to_column(expr70, "cells")->expr70
+
+
+expr<-full_join(expr35,expr70, by="cells")
+
+expr[is.na(expr)] <- 0
+
+rownames(expr) <- expr[,1]
+expr <- expr[,-1]
+
+expr<-t(expr)
+
+fix(expr)
+
+expr %>% as.tibble(expr)%>%
+  mutate(TimePoint = case_when(str_detect(rownames(expr), 'WT_35') ~ 'WT_35', str_detect(rownames(expr), 'WT_70') ~ 'WT_70',
+                             TRUE ~ 'test'))  -> expr
+
+expr$TimePoint <- factor(expr$TimePoint, levels=c("WT_35","WT_70"))
+
+expr<-subset(expr, expr$TimePoint %in% c("WT_35","WT_70"))
+
+NormalisedData_Zscore <- t(apply(as.matrix(t(expr[1:18])),1,Z_Normalize))
+
+library(ComplexHeatmap)
+library(circlize)
+
+ha = HeatmapAnnotation(
+  TimePoint =expr$TimePoint,
+  
+  col       =list(TimePoint = c("WT_35"="#2F4F4F", 
+                                "WT_70"= "#882323")
+  ),
+  show_annotation_name = T,
+  show_legend =  T,
+  annotation_name_side = "right",
+  annotation_name_gp = gpar(fontsize = 9),
+  annotation_name_offset = unit(0.3, "mm"))
+
+hmps=Heatmap(NormalisedData_Zscore, show_row_names = TRUE,  heatmap_legend_param = list(title = '', color_bar = "discrete"), show_row_dend=FALSE, row_names_gp = gpar(fontsize=10),col = colorRamp2(c(-4, 0, 4), c("black", "white", "gold")),top_annotation=ha)
+
+pdf("HPPS.pdf", width =10)
+print(hmps)
+
+
+dev.off()
+
+```
+
+#---------------------------------------------------------------
+
+
+```{r}
+TH=c("TH")
+B_TH <- B[rowData(B)$gene_short_name %in% TH]
+q4=plot_genes_in_pseudotime(B_TH, color_cells_by  = "MODEL")
+
+
+DCX=c( "DCX")
+B_DCX <- B[rowData(B)$gene_short_name %in% DCX]
+q6=plot_genes_in_pseudotime(B_DCX, color_cells_by  = "MODEL")
+
+
+
+pdf("PTG.pdf", width =10)
+print(q4)
+print(q5)
+print(q6)
+print(q7)
+
+dev.off()
+```
+
+
+```{r}
+#plot_cells(cds, color_cells_by="Cell")
+plot_cells(B, genes=c("DCX", "ANK3"))
+```
+
+
+
+
