@@ -1,0 +1,1151 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+combined.all = readRDS("Z:/16-Our Papers\\In Preparation\\LRRK2_scRNA\\35&70D\\Figures\\Figure 1 Correlation Alise EC, WT-embryo\\Originals\\Data\\data_integrated_Embr_WT_MUT_all4.rds")
+Idents(combined.all) = combined.all$seurat_clusters
+
+combined.all <-  RenameIdents(combined.all,  `0` = "NBs in vitro", `1` = "young Neurons", `2` = "mature DNs", `3` = "Non DNs ", `4` = "Glia", `5` = "Progenitors", `6` = "Pericytes", `7` = "NBs in vitro", `8`="Endothelial cells")
+DimPlot(combined.all, reduction = "umap", label = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(RColorBrewer)
+
+library(forcats)
+```
+
+
+```{r}
+head(combined.all@meta.data, 100)
+
+
+combined.all$CELL_ID <-Idents(combined.all)
+combined.all$CELLID_Models <- paste(combined.all$CELL_ID, combined.all$Models, sep = "_")
+
+
+head(combined.all@meta.data, 100)
+
+```
+
+#ggplot
+```{r}
+Ident_Age<- subset(combined.all)
+Idents(Ident_Age)   = "GEN_AGE"
+
+levels(Ident_Age)
+
+my_levels = c("35_WT", "70_WT", "35_MUT", "70_MUT", "week6_","week7_","week8_","week9_","week10_","week11_")
+levels(Ident_Age)=my_levels
+levels(Ident_Age)
+
+
+
+Ident_Age@meta.data %>%
+  mutate(GEN_AGE= factor(GEN_AGE, levels=my_levels)) %>%
+  mutate(expression = Ident_Age@assays$RNA@data['TH',]) %>%
+  ggplot(aes(x = GEN_AGE, y = expression)) +
+  geom_boxplot(aes(fill = GEN_AGE )) +
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TH")
+
+Ident_Age@meta.data %>%
+  mutate(GEN_AGE= factor(GEN_AGE, levels=my_levels)) %>%
+  mutate(expression = Ident_Age@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = GEN_AGE, y = expression)) +
+  geom_boxplot(aes(fill = GEN_AGE )) +
+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+```
+
+
+#do subsets
+```{r}
+#add Column combined cluster and Mgl
+
+combined.all <- AddMetaData(object = combined.all, metadata = groups, col.name = "Week")
+
+w6 <- grep("week6", combined.all$Age) #1360:1646
+w7 <- grep("week7",combined.all$Age) #1:131
+w8 <- grep("week8", combined.all$Age) #1647:1977
+w9 <- grep("week9", combined.all$Age) #132:453
+w10 <- grep("week10", combined.all$Age) #454:962
+w11 <- grep("week11", combined.all$Age) #963:1359
+
+
+
+combined.all$Week[1360:1646] <- "6"
+combined.all$Week[1:131]<- "7"
+combined.all$Week[1647:1977]<- "8"
+combined.all$Week[132:453]<- "9"
+combined.all$Week[454:962] <-"10"
+combined.all$Week[963:1359] <- "11"
+combined.all$Week[1978:4924] <- "D35_MUT"
+combined.all$Week[4925:7789] <- "D35_WT"
+combined.all$Week[7790:10450] <- "D70_MUT"
+combined.all$Week[10451:12456] <- "D70_WT"
+
+head(combined.all@meta.data, 100)
+Ident_EMB<- subset(combined.all)
+Idents(Ident_EMB)   = "Models"
+Ident_EMBR<- subset(Ident_EMB, idents= "Embryo")
+
+head(Ident_EMBR@meta.data, 100)
+
+levels(Ident_EMBR)
+Idents(Ident_EMBR)   = "Week"
+
+my_levels = c(6, 7,8,9,10,11)
+levels(Ident_EMBR)=my_levels
+levels(Ident_EMBR)
+
+Weeks=as.numeric(Ident_EMBR$Week)
+
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Weeks, y = expression)) +
+  geom_point() + 
+  geom_smooth(method="loess") 
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+      
+      
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Weeks, y = expression)) +
+  geom_boxplot(aes(fill = Week )) +
+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+
+ Ident_EMBR@meta.data %>%
+  mutate(Weeks= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = as.numeric(Week), y = expression)) +
+  geom_smooth(method="loess") 
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+      
+      
+      
+      Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Weeks, y = expression)) +
+  geom_boxplot(aes(fill = Week )) +
+          geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+      
+      
+  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 5)+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+```
+
+
+
+
+```{r}
+combined.all <- AddMetaData(object = combined.all, metadata = groups, col.name = "Model")
+
+combined.all$Model[1:1977] <- "Embryo"
+combined.all$Model[1978:12456] <- "ORG"
+
+    
+head(combined.all@meta.data, 100)
+Ident_ORG<- subset(combined.all)
+Idents(Ident_ORG)   = "Model"
+head(Ident_ORG@meta.data, 100)
+Ident_ORGA<- subset(Ident_ORG, idents= "ORG")
+levels(Ident_ORGA)
+
+head(Ident_ORGA@meta.data, 100)
+
+Idents(Ident_ORGA)   = "Models"
+
+my_levels = c("OrgWT35",  "OrgWT70","OrgMUT35", "OrgMUT70")
+
+levels(Ident_ORGA)=my_levels
+levels(Ident_ORGA)
+
+Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Models, y = expression)) +
+    geom_boxplot(aes(fill = Age )) +
+  geom_smooth(method="loess",se=TRUE, aes(group=1)) 
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+      
+Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Models, y = expression)) +
+  geom_smooth(method="loess",se=TRUE, aes(group=1)) 
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+      
+      
+Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))
+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+   ylim(0, 5)+
+
+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+      
+ 
+```
+
+#final graphs for all 4 comparisons
+```{r}
+library(ggsignif)
+
+
+sig=Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['NR2F1',]) %>%
+  ggplot(aes(x = Models, y = expression)) +
+  geom_boxplot(aes(fill = Models )) +
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT35", "OrgWT70"), c("OrgMUT35","OrgMUT70"),c("OrgWT70","OrgMUT70"), c("OrgWT35","OrgMUT35"))) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  scale_fill_manual(values= c( "#cccccc", "#bdd7e7",  "#baa7e7",  "#ddd7e7"), name = "Condition") +
+  labs(title = "NR2F1")
+
+ pdf("NR2F1ew.pdf")
+print(sig)
+
+dev.off()  
+
+
+a=Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['NR2F1',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+   scale_colour_gradient(limits= c(0,5))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 9)+
+ facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1") 
+print(a)
+
+c=Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['NR2F1',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+  scale_colour_gradient(limits= c(0,5))+
+ facet_grid(~CELL_ID)+
+            ylim(0, 9)+
+  stat_compare_means(comparisons = list(c("OrgWT35", "OrgWT70"), c("OrgMUT35","OrgMUT70"),c("OrgWT70","OrgMUT70"), c("OrgWT35","OrgMUT35")),
+                    label = "p.signif" ) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1")  
+
+
+pdf("NR2F1NEW1.pdf", width = 40)
+print(sig)
+print(a)
+print (c)
+
+dev.off()  
+
+
+
+
+
+```
+
+#final graphs for all 4 comparisons
+```{r}
+library(ggsignif)
+
+
+sig=Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['SRR',]) %>%
+  ggplot(aes(x = Models, y = expression)) +
+  geom_boxplot(aes(fill = Models )) +
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT35", "OrgWT70"), c("OrgMUT35","OrgMUT70"),c("OrgWT70","OrgMUT70"), c("OrgWT35","OrgMUT35"))) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  scale_fill_manual(values= c( "#cccccc", "#bdd7e7",  "#baa7e7",  "#ddd7e7"), name = "Condition") +
+  labs(title = "SRR")
+
+
+a=Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['SRR',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+   scale_colour_gradient(limits= c(0,5))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 9)+
+ facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "SRR") 
+print(a)
+
+c=Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['SRR',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+  scale_colour_gradient(limits= c(0,5))+
+ facet_grid(~CELL_ID)+
+            ylim(0, 9)+
+  stat_compare_means(comparisons = list(c("OrgWT35", "OrgWT70"), c("OrgMUT35","OrgMUT70"),c("OrgWT70","OrgMUT70"), c("OrgWT35","OrgMUT35")),
+                    label = "p.signif" ) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "SRR")  
+
+
+pdf("SRR.pdf", width = 40)
+print(sig)
+print(a)
+print (c)
+
+dev.off()  
+
+
+
+
+
+```
+
+
+```{r}
+library(ggsignif)
+
+
+sig=Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['PTN',]) %>%
+  ggplot(aes(x = Models, y = expression)) +
+  geom_boxplot(aes(fill = Models )) +
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT35", "OrgWT70"), c("OrgMUT35","OrgMUT70"),c("OrgWT70","OrgMUT70"), c("OrgWT35","OrgMUT35"))) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  scale_fill_manual(values= c( "#cccccc", "#bdd7e7",  "#baa7e7",  "#ddd7e7"), name = "Condition") +
+  labs(title = "PTN")
+
+
+a=Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['PTN',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+   scale_colour_gradient(limits= c(0,5))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 9)+
+ facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "PTN") 
+
+c=Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['PTN',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+  scale_colour_gradient(limits= c(0,5))+
+ facet_grid(~CELL_ID)+
+            ylim(0, 9)+
+  stat_compare_means(comparisons = list(c("OrgWT35", "OrgWT70"), c("OrgMUT35","OrgMUT70"),c("OrgWT70","OrgMUT70"), c("OrgWT35","OrgMUT35")),
+                    label = "p.signif" ) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "PTN")  
+
+
+pdf("PTN.pdf", width = 40)
+print(sig)
+print(a)
+print (c)
+
+dev.off()  
+
+
+
+```
+
+
+```{r}
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['UCHL1',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "UCHL1") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['UCHL1',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "UCHL1")   
+
+
+
+   Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['FOXA2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['FOXA2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['TH',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['TH',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+   
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['GAD1',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['GAD1',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+   
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['LRRK2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['LRRK2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['SOX2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['SOX2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['TUBB3',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['TUBB3',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['TUBB3',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['TUBB3',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+
+
+
+  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+
+  Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+   #ylim(0, 5)+
+
+
+ # facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+```
+
+
+
+FINAL
+```{r}
+#---------------------- facegrid org 
+  
+ time0=  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['NR2F1',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+  scale_colour_gradient(limits= c(0,5))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['NR2F1',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+  scale_colour_gradient(limits= c(0,5))+
+ facet_grid(~CELL_ID)+
+            ylim(0, 6)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1")  
+
+  
+  
+  
+  #------------------------------- no facegrid
+
+  
+time1=  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['NR2F1',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression))+
+scale_colour_gradient(limits= c(0,5))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1") +
+
+  Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['UCHL1',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+  scale_colour_gradient(limits= c(0,5))+
+              geom_jitter(aes(color = expression ))+
+            ylim(0,6)+
+
+   #ylim(0, 5)+
+
+
+ # facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1")  
+  
+ 
+  
+#-------------------------------all facegrid
+   
+ time=   Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['NR2F1',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+   scale_colour_gradient(limits= c(0,5))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1") 
+
+tim3=  Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['NR2F1',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+  scale_colour_gradient(limits= c(0,5))+
+              geom_jitter(aes(color = expression ))+
+          ylim(0, 6)+
+
+   #ylim(0, 5)+
+
+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "NR2F1")
+  
+  
+    pdf("NR2F1.pdf", width = 40)
+print(time)
+print(tim3)
+
+dev.off()  
+
+    pdf("NR2F11.pdf", width = 20)
+
+print(time1)
+print(time0)
+
+dev.off()  
+    
+```
+FINAL
+```{r}
+#---------------------- facegrid org 
+  
+ time0=  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['TUBB3',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TUBB3") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['TUBB3',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TUBB3")  
+
+  
+  
+  
+  #------------------------------- no facegrid
+
+  
+time1=  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['TUBB3',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TUBB3") +
+
+  Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['TUBB3',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+   #ylim(0, 5)+
+
+
+ # facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TUBB3")  
+  
+ 
+  
+#-------------------------------all facegrid
+   
+ time=   Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['TUBB3',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TUBB3") +
+
+  Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['TUBB3',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+   #ylim(0, 5)+
+
+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "TUBB3")
+  
+  
+    pdf("timeTUBB3.pdf", width = 40)
+print(time)
+
+dev.off()  
+
+    pdf("time1TUBB3.pdf", width = 20)
+
+print(time1)
+print(time0)
+
+dev.off()  
+    
+```
+#triao and error
+
+
+```{r}
+Ident_ORGA@meta.data %>%
+ # mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+       geom_boxplot(aes(fill = Week )) +
+ #  ylim(0, 5)+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+```
+
+```{r}
+head(combined.all@meta.data, 100)
+
+
+Ident_All<- subset(combined.all)
+Idents(Ident_All)="Week"
+
+my_levels = c(6, 7,8,9,10,11,"D35_WT", "D35_MUT")
+levels(Ident_All)=my_levels
+levels(Ident_All)
+
+a=subset(Ident_All, idents = c("6", "7", "8", "9", "10", "11"))
+
+ Ident_All@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_All@assays$RNA@data['MAP2',]) %>%
+  ggplot(aes(x = a, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+  ylim(0, 5)+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+ 
+ 
+ 
+  Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 5)+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+
+  Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+   #ylim(0, 5)+
+
+
+ # facet_grid(~CELL_ID)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")  
+  
+-------------------------------
+```
+
+
+```{r}
+Ident_EMBR@meta.data %>%
+  mutate(Week= factor(Week, levels=my_levels)) %>%
+  mutate(expression = Ident_EMBR@assays$RNA@data['MAP2',]) %>%
+    ggplot(aes(x = Weeks, y = expression)) +
+ geom_jitter(aes(color = expression ))+
+geom_smooth(method="loess",se=TRUE, aes(group=1)) +
+      ylim(0, 6)+
+ #facet_grid(~)+
+  #stat_compare_means(comparisons = list(c("MOs", "pMGL-MOs")),
+                     #method = "wilcox.test", 
+                   #  label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2") +
+  
+  
+   Ident_ORGA@meta.data %>%
+  mutate(Models= factor(Models, levels=my_levels)) %>%
+  mutate(expression = Ident_ORGA@assays$RNA@data['MAP2',]) %>%
+ggplot(aes(x = Models, y = expression)) +
+              geom_jitter(aes(color = expression ))+
+ facet_grid(~CELL_ID)+
+  stat_compare_means(comparisons = list(c("OrgWT", "OrgMUT")),
+                     method = "wilcox.test", 
+                    label = "p.signif") +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))+
+  #scale_fill_manual(values= c( "#cccccc", "#bdd7e7"), name = "Microglia") +
+  labs(title = "MAP2")
+```
+
